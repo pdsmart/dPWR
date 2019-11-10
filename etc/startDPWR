@@ -1,0 +1,56 @@
+#!/bin/bash
+#########################################################################################################
+##
+## Name:            startDPWR
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A shell script to start the dPWR controller.
+##
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+
+#-----------------------------------------------------------
+# start script for the DPWR server
+#-----------------------------------------------------------
+export SYSTEM=`uname`
+export PACKAGE=DPWR
+if [ "${SYSTEM}" = "Linux" ]; then
+    export BASEDIR=/usr/local/${PACKAGE}
+else
+    export BASEDIR=/usr/local/${PACKAGE}
+fi
+. /etc/profile
+. ${BASEDIR}/etc/${PACKAGE}.shc
+
+cd $ETCDIR
+#-----------------------------------------------------------
+# Call the killDPWR script to terminate running process.
+#
+echo "Killing dpwr"
+$ETCDIR/killDPWR
+sleep 3
+#
+#-----------------------------------------------------------
+
+COMMAND="${BINDIR}/dpwr $@"
+
+echo "Starting $COMMAND $*"
+${BASEDIR}/etc/forever $COMMAND $* &
+echo "Done."

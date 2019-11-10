@@ -1,0 +1,53 @@
+#!/bin/sh
+#########################################################################################################
+##
+## Name:            forever
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A shell script to run a given program in a continuous loop.
+##
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+ 
+trap exit 15
+ 
+count=1
+sval=1
+while : ; do
+    $@
+
+    if [ $? -eq 0 ]; then
+        exit 0
+    fi
+ 
+    if [ $count -le 100 ] ; then
+        sval=10
+    elif [ $count -le 200 ] ; then
+        sval=60
+    else
+        sval=120
+        logger -t FOREVER -p user.emerg "PROGRAM '$@' HAS JUST DIED ... RESTARTING IT IN $sval SECONDS"
+    fi
+ 
+    echo "Restarting '$@', in $sval seconds ($count)..."
+    sleep $sval
+ 
+    count=`expr $count + 1`
+done

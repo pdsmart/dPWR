@@ -1,0 +1,120 @@
+#!/bin/sh
+##########################################################################################################
+##
+## Name:            ix_setDDNS
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A shell script helper program for the dPWR program.
+##                  This script is executed by the dPWR program to setup the Dynamic DNS server to 
+##                  configure an external DYNDNS provider with our current public IP address.
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+
+ 
+trap exit 15
+
+# Get the parameters for the NTP server.
+#
+if [ $# != 8 ]; then
+    # Error exit
+    exit 255
+fi
+ENABLED=$1
+SERVER=$2
+CLIENT_DOMAIN=$3
+CLIENT_USERNAME=$4
+CLIENT_PASSWORD=$5
+PROXY_ENABLE=$6
+PROXY_IP=$7
+PROXY_PORT=$8
+
+# Kill the service if running.
+#
+PID=`${PS} | grep "ddclient" |grep -v grep | grep -v gvim | grep -v vi | awk '{print $2}'`
+if test "$PID" != ""
+then
+    kill -1 $PID
+    if [ $? -ne 0 ]; then
+        echo kill $PID ERROR
+    fi
+    sleep 2
+
+    PID=`${PS} | grep "ddclient" |grep -v grep | grep -v gvim | grep -v vi | awk '{print $2}'`
+    if test "$PID" != ""
+    then
+        kill -9 $PID
+    fi
+fi
+
+# Only update the config and start the server if DDNS is enabled.
+#
+if [ "$ENABLED" = "ENABLED" ]; then
+
+    # If a previous backup exists, remove it and copy current config to backup.
+    #
+    if [ -f ${ETCDIR}/ddns.conf.bak ]; then
+        rm -f ${ETCDIR}/ddns.conf.bak
+    fi
+    if [ ! -f ${ETCDIR}/ddns.conf ]; then
+        #
+        # Exit as no DDNS configuration exists.
+        #
+        exit 254
+    fi
+    mv ${ETCDIR}/ddns.conf ${ETCDIR}/ddns.conf.bak
+
+    # Now create configuration file
+    #
+    cat > ${ETCDIR}/ddns.conf <<-EOF
+	protocol=dyndns2
+	use=web
+	login=$CLIENT_USERNAME
+	password=$CLIENT_PASSWORD
+	EOF
+
+    #
+    # Add in proxy if enabled.
+    #
+    if [ "${PROXY_ENABLE}" = "ENABLED" ]; then
+        cat >> ${ETCDIR}/ddns.conf <<-EOF
+		proxy=$PROXY_IP
+		EOF
+    fi
+    #
+    # Finally the server information.
+    #
+    echo "$SERVER" >> ${ETCDIR}/ddns.conf
+    chmod 700 ${ETCDIR}/ddns.conf
+
+    #
+    # If required ddclient directories dont exist, create.
+    #
+    if [ ! -d /var/cache/ddclient ]; then
+        mkdir /var/cache/ddclient
+    fi
+    #
+    # Start DDCLIENT to update the Dynamic DNS host with out IP.
+    #
+    ${BINDIR}/ddclient -file ${ETCDIR}/ddns.conf -daemon 300 -syslog &
+fi
+
+# All done, exit.
+#
+exit 0

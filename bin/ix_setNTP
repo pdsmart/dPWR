@@ -1,0 +1,89 @@
+#!/bin/sh
+##########################################################################################################
+##
+## Name:            ix_setNTP
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A shell script helper program for the dPWR program.
+##                  This script is executed by the dPWR program to setup the Network Time Protocol
+##                  at the systen level and normally executes SUID.
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+ 
+trap exit 15
+
+# Get the parameters for the NTP server.
+#
+if [ $# != 4 ]; then
+    # Error exit
+    exit 255
+fi
+SERVER=$1
+TIMEZONE_ID=$2
+TIMEZONE_DST=$3
+TIMEZONE_OFFSET=$4
+
+# If a previous backup exists, remove it and copy current config to backup.
+#
+if [ -f /etc/ntp.conf.bak ]; then
+    rm -f /etc/ntp.conf.bak
+fi
+if [ ! -f /etc/ntp.conf ]; then
+   # Exit as no NTP configuration.
+   #
+   exit 254
+fi
+mv /etc/ntp.conf /etc/ntp.conf.bak
+
+# Now copy backup to current replacing necessary parameters.
+#
+> /etc/ntp.conf
+while read line
+do
+    if [ "`/bin/echo "$line" | /bin/grep '^server'`" != "" ]; then
+        echo "server $SERVER" >> /etc/ntp.conf
+		continue
+	fi
+    if [ "`/bin/echo "$line" | /bin/grep '^#timezone_id'`" != "" ]; then
+        /bin/echo "#timezone_id $TIMEZONE_ID" >> /etc/ntp.conf
+		continue
+	fi
+    if [ "`/bin/echo "$line" | /bin/grep '^#timezone_dst'`" != "" ]; then
+        /bin/echo "#timezone_dst $TIMEZONE_DST" >> /etc/ntp.conf
+		continue
+	fi
+    if [ "`/bin/echo "$line" | /bin/grep '^#timezone_offset'`" != "" ]; then
+        /bin/echo "#timezone_offset $TIMEZONE_OFFSET" >> /etc/ntp.conf
+		continue
+	fi
+	/bin/echo "$line" >> /etc/ntp.conf
+done < /etc/ntp.conf.bak
+
+# Restart the service if running.
+#
+service ntp restart
+
+# Ensure service is enabled on reboot.
+#
+update-rc.d -f ntp enable
+
+# All done, exit.
+#
+exit 0

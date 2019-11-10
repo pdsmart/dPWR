@@ -1,0 +1,253 @@
+/*!
+ * user.js v1.0.0
+ * Copyright 2011-2014 Philip Smart.
+ */
+
+if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript requires jQuery') }
+
+/* ========================================================================
+ * user.js: 
+ * ========================================================================
+*/
+
+$('dynamic-nofrills-table').dataTable( {
+    "paging":   false,
+    "ordering": false,
+    "info":     false
+} );
+
+window.onload = function() {
+    var elements = document.getElementsByTagName('*'),
+        i;
+    for (i in elements) {
+        if (elements[i].hasAttribute && elements[i].hasAttribute('data-include')) {
+            fragment(elements[i], elements[i].getAttribute('data-include'));
+        }
+    }
+    function fragment(el, url) {
+        var localTest = /^(?:file):/,
+            xmlhttp = new XMLHttpRequest(),
+            status = 0;
+
+        xmlhttp.onreadystatechange = function() {
+            /* if we are on a local protocol, and we have response text, we'll assume
+ *                  things were sucessful */
+            if (xmlhttp.readyState == 4) {
+                status = xmlhttp.status;
+            }
+            if (localTest.test(location.href) && xmlhttp.responseText) {
+                status = 200;
+            }
+            if (xmlhttp.readyState == 4 && status == 200) {
+                el.outerHTML = xmlhttp.responseText;
+            }
+        }
+
+        try { 
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+        } catch(err) {
+            /* todo catch error */
+        }
+    }
+}
+
+$(function(){
+  $("#includedContent").load("/status"); 
+});
+
+// $.fn.bootstrapSwitch.defaults.size = 'small';
+// $.fn.bootstrapSwitch.defaults.onColor = 'success';
+// $("[name='my-checkbox']").bootstrapSwitch();
+$('input[name="my-checkbox"]').on('switchChange.bootstrapSwitch', function(event, state) {
+  console.log(this); // DOM element
+  console.log(event); // jQuery event
+  console.log(state); // true | false
+ document.getElementById("mode-change").value = 99;
+    var formObject = document.forms['my-checkbox'];
+    formObject.submit();
+
+});
+$('input[name="my-checkbox]"').submit(function(){ //listen for submit event
+var params = [
+               {
+                 name: "url",
+                 value: window.location.pathname
+               },
+               {
+                  name: "time",
+                  value: new Date().getTime()
+               }
+             ];
+    $.each(params, function(i,param){
+        $('<input />').attr('type', 'hidden')
+            .attr('name', param.name)
+            .attr('value', param.value)
+            .appendTo('#my-checkbox');
+    });
+
+    return true;
+});
+
+function autoSubmit()
+{
+    var formObject = document.forms['theForm'];
+    formObject.submit();
+}
+
+function inputOutputSubmit(event, state)
+{
+    var formObject = document.forms['theConfig'];
+    formObject.submit();
+}
+
+$(function() {
+
+    //Variable of previously selected
+    var selected = 0;
+
+    //$('.btn-toggle').button().click(function(e) {
+    $('#ModeSelector').button().click(function(e) {
+        e = e || window.event;
+        e = e.target || e.srcElement;
+    
+    
+            //Enable previous
+            if (selected == 0) {
+    //            if(e.id == "ClickOnModeIsInput")
+    //            {
+    //                $('#ModeIsOutput').collapse('hide');
+    //                $('#ModeIsInput').collapse('hide');
+      //              $('#ModeIsInput').collapse('show');
+    //            } else
+    //            {
+    //                $('#ModeIsInput').collapse('hide');
+    //                $('#ModeIsOutput').collapse('hide');
+       //             $('#ModeIsOutput').collapse('show');
+       // alert($('#' + e.id).attr('data-target'));
+    //            }
+    
+            //    selected = e; //$(this);
+        //alert($('#' + e.id).attr('data-target'));
+            } else
+            {
+                if(e.id == selected.id) { return; }
+                //selected.collapse('show');
+                //$($('#' + selected.id).attr('data-target')).collapse('show');
+                //selected.button('enable').removeClass('ui-state-active ui-state-hover');
+            $($('#' + selected.id).attr('data-target')).collapse('hide');
+            }
+    
+            //Cache the previous
+            selected = e; //$(this);
+            $($('#' + selected.id).attr('data-target')).collapse('show');
+        if ($(this).find('.btn-primary').size()>0) {
+        	$(this).find('.btn').toggleClass('btn-primary');
+        }
+        if ($(this).find('.btn-danger').size()>0) {
+        	$(this).find('.btn').toggleClass('btn-danger');
+        }
+    
+            //Disable this and keep color attributes
+            //selected.button('disable').addClass('ui-state-active').removeClass('ui-state-disabled');
+    //selected.collapse('hide');
+        //$($('#' + e.id).attr('data-target')).collapse('hide');
+        //$($('#' + selected.id).attr('data-target')).collapse('hide');
+    
+            //Do Normal Button Click Stuff Here
+            //$('#datame').text(selected.text() + ' was clicked');
+    
+        //alert($('#ClickOnModeIsInput').attr('data-target'));
+        //alert($('#' + e.id).attr('data-target'));
+    //    if(e.id == "ClickOnModeIsInput" && $(this).find('.btn-default').val() == "ClickOnModeIsOutput")
+    //    {
+    //    $(this).find('.btn').toggleClass('btn-default');
+    //    $("#ModeIsInput").collapse('show');
+    //   $("#ModeIsOutput").collapse('hide');
+    //    }
+    //    if(e.id == "ClickOnModeIsOutput" && $(this).find('.btn-danger').val() == "ClickOnModeIsOutput")
+    //    {
+    //    $(this).find('.btn').toggleClass('btn-danger');
+    //    $("#ModeIsInput").collapse('hide');
+    //   $("#ModeIsOutput").collapse('show');
+    //    }
+    
+    //        $('<input />').attr('type', 'hidden')
+    //            .attr('name', "S1")
+    //            .attr('value', $(this).find('.btn-primary').val())
+    //            .appendTo(document.forms['inoutchoice']);
+    //        $('<input />').attr('type', 'hidden')
+    //            .attr('name', "S2")
+    //            .attr('value', e.id)
+    //            .appendTo(document.forms['inoutchoice']);
+    //        $('<input />').attr('type', 'hidden')
+    //            .attr('name', "S3")
+    //            .attr('value', $("#abcd").attr("id"))
+    //            .appendTo(document.forms['inoutchoice']);
+    //        $('<input />').attr('type', 'hidden')
+    //            .attr('name', "S4")
+    //            .attr('value', $("*:focus").attr("id"))
+    //            .appendTo(document.forms['inoutchoice']);
+    
+        // Ignore clicks on the active state.
+        //
+        //if(e.id == "INPUT" &&  $(this).find('.btn-primary').val() == "input") { return false; }
+        //if(e.id == "OUTPUT" && $(this).find('.btn-primary').val() == "output") { return false; }
+    
+        //$(this).find('.btn').toggleClass('active');  
+        //if ($(this).find('.btn-primary').size()>0) {
+       // 	$(this).find('.btn').toggleClass('btn-primary');
+       // }
+    
+       // }
+        // var formObject = document.forms['GROUP1FORM'];
+        //$(this).find('.btn').addClass('active').siblings().removeClass('active');
+        
+    
+       // if ($(this).find('.btn-danger').size()>0) {
+       // 	$(this).find('.btn').toggleClass('btn-danger');
+       // }
+       // if ($(this).find('.btn-success').size()>0) {
+       // 	$(this).find('.btn').toggleClass('btn-success');
+       // }
+   // if ($(this).find('.btn-info').size()>0) {
+   // 	$(this).find('.btn').toggleClass('btn-info');
+   // }
+    
+  //  $(this).find('.btn').toggleClass('btn-default');
+       
+});
+//$('#ClickOnModeIsInput').click();
+});
+
+//$('form').submit(function(){
+//	alert($(this["options"]).val());
+//    return false;
+//});
+
+// $('form').submit(function(){ //listen for submit event
+$(document.forms['inoutchoice']).submit(function(){ //listen for submit event
+var params = [
+//               {
+//                 name: "url",
+//                 value: window.location.pathname
+//               },
+//               {
+//                  name: "time",
+//                  value: new Date().getTime()
+//               }
+             ];
+    $.each(params, function(i,param){
+        $('<input />').attr('type', 'hidden')
+            .attr('name', param.name)
+            .attr('value', param.value)
+            .appendTo(document.forms['inoutchoice']);
+    });
+
+    return true;
+    if($(this).find('.btn-primary').val() == "output")
+    {
+        return true;
+    }
+    return false;
+});

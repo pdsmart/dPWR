@@ -1,0 +1,55 @@
+#!/bin/bash
+#########################################################################################################
+##
+## Name:            showDPWR
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A shell script to show if the dPWR controller program is running and associated
+##                  process Id's.
+##
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+
+#-----------------------------------------------------------
+# show process script for the DPWR server
+#-----------------------------------------------------------
+export SYSTEM=`uname`
+export PACKAGE=DPWR
+if [ "${SYSTEM}" = "Linux" ]; then
+    export BASEDIR=/usr/local/${PACKAGE}
+else
+    export BASEDIR=/usr/local/${PACKAGE}
+fi
+. /etc/profile
+. ${BASEDIR}/etc/${PACKAGE}.shc
+
+cd $ETCDIR
+for VAR in $PROCESS 
+do
+    RES=`${PS2} $USER | grep $VAR | grep -v forever | grep -v grep | grep -v gvim | grep -v vi | awk '{print $2}'`
+    RES=`echo $RES | sed 's/ /,/g'`
+    if [ "$RES" = "" ];then
+        $ECHO "$VAR is not running."
+    else
+            
+        $ECHO "$VAR is running on PID(s) $RES." 
+    fi
+done
+exit 0

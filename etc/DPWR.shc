@@ -1,0 +1,27 @@
+# Default settings package DPWR
+#------------------------------
+
+export BINDIR=${BASEDIR}/bin
+export ETCDIR=${BASEDIR}/etc
+export EXECDIR=${BASEDIR}/exec
+export LOGDIR=${BASEDIR}/log
+export PARAMDIR=${BASEDIR}/etc
+export PERL5LIB=$PERL5LIB:${BASEDIR}/bin:${BASEDIR}/lib
+export PROCESS="dpwr"
+export SEMDIR=${BASEDIR}/sem
+export PATH=${PATH}:${BINDIR}:${ETCDIR}
+
+if [ "${SYSTEM}" = "Linux" ]; then
+    export PS="/bin/ps -eaf"
+    export PS2="/bin/ps -fu"
+    export USER=`/usr/bin/whoami`
+    export ECHO=/bin/echo
+else
+    export PS="/usr/ucb/ps -auxww"
+    export PS2="/usr/bin/ps -fu"
+    export USER=`/usr/ucb/whoami`
+    export ECHO=/usr/bin/echo
+fi
+
+
+#################################################################

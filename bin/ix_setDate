@@ -1,0 +1,60 @@
+#!/bin/sh
+##########################################################################################################
+##
+## Name:            ix_setDate
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A shell script helper program for the dPWR program.
+##                  This script is executed by the dPWR program to setup the Date and Time and disables
+##                  the NTP daemon the systen level and normally executes SUID.
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+
+ 
+trap exit 15
+
+# Get the date and time to configure.
+#
+if [ $# != 6 ]; then
+    # Error exit
+    exit 255
+fi
+DAY=$1
+MONTH=$2
+YEAR=$3
+HOUR=$4
+MINUTE=$5
+SECOND=$6
+
+# Stop NTP service if running.
+#
+service ntp stop
+
+# Ensure service is disabled on reboot.
+#
+update-rc.d -f ntp disable
+ 
+# Call system date to change the actual date.
+#
+/bin/date +'%F %T' -s "$YEAR-$MONTH-$DAY $HOUR:$MINUTE:$SECOND" >/dev/null
+
+# All done, exit with success.
+#
+exit 0

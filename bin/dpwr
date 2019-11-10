@@ -1,0 +1,2894 @@
+#!/home/psmart/perl5/perlbrew/perls/perl-5.10.1/bin/perl
+##!/usr/bin/perl -w
+##########################################################################################################
+##
+## Name:            dpwr
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A perl web-server and I/O controller
+##                  This program is a digital Power Controller. It provides a web interface for
+##                  configuration and a set of mechanisms to allow communications with 3rd party
+##                  I/O devices to provide control, generally on/off control of relays, thyristors
+##                  etc but could also control any device. 
+##
+##                  The program is written as a main program, this, along with a set of modules
+##                  such as Utilities.pm and I/O board control modules. Also the web interface is
+##                  built by a set of include files for each page and PHP/JavaScript applets
+##                  to display relevant information.
+##
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+
+# Access Rights
+#
+my $ACCESS_LEVEL_ALL            =  0;
+my $ACCESS_LEVEL_USER           =  1;
+my $ACCESS_LEVEL_ADMIN          =  2;
+my $ACCESS_LEVEL_ROOT           =  3;
+
+# Configurable constants which dont usually need changing. All other constants are considered parameters and
+# can be found in the params file.
+#
+use constant MODULE             => "main";
+my  $PROGRAMVERSION             =  2.3;
+my  $PROGRAMDATE                =  "2015-2019";
+my  $PARAMFILEDIR               =  "$ENV{'PARAMDIR'}";
+my  $PARAMFILEBASE              =  "DPWR";
+my  $PARAMFILEEXT               =  "\.cfg";
+my  $PARAMFILE                  =  "${PARAMFILEDIR}/${PARAMFILEBASE}${PARAMFILEEXT}";
+my  $PARAMFILEDEFAULT           =  "${PARAMFILEDIR}/${PARAMFILEBASE}\.default";
+my  $SERVER_DNAME               =  "dpwr";
+my  $SERVER_NAME                =  "DPWR";
+my  $SERVER_MODEL               =  "1000a";
+my  $SERVER_USER                =  "www-data";
+my  $SERVER_GROUP               =  "www-data";
+my  $SOCKADDR                   =  'S n a4 x8';
+my  $TERMINATE_PROC             =  0;
+my  $EXIT_CODE                  =  0;
+my  $http->{HTMLMENUTMPL}       =  "";
+my  %PARAMS;
+my  %CONFIGFILE;
+
+# Redirect http configuration.
+#
+%nameredir = (
+     "www.mydomain.org" => "http://192.168.137.128",
+     "mydomain.org"     => "http://192.168.137.128",
+    );
+
+%system_content_types =
+    ("html"     => "text/html",
+     "htm"      => "text/html",
+     "txt"      => "text/plain",
+     "xml"      => "text/xml",
+     "xsl"      => "text/xml",
+     "xhtml"    => "application/xhtml+xml",
+     "css"      => "text/css",
+     "wml"      => "text/vnd.wap.wml",
+     "gif"      => "image/gif",
+     "jpeg"     => "image/jpeg",
+     "jpg"      => "image/jpeg",
+     "bmp"      => "image/bmp",
+     "png"      => "image/png",
+     "tif"      => "image/tiff",
+     "tiff"     => "image/tiff",
+     "ico"      => "image/x-icon",
+     "svg"      => "image/svg+xml",
+     "svgz"     => "image/svg+xml",
+     "wbmp"     => "image/vnd.wap.wbmp",
+     "wbm"      => "image/vnd.wap.wbmp",
+     "xbm"      => "image/x-xbitmap",
+     "mp3"      => "audio/x-mpeg",
+     "wma"      => "audio/x-ms-wma",
+     "wav"      => "audio/x-wav",
+     "au"       => "audio/basic",
+     "aif"      => "audio/x-aiff",
+     "aiff"     => "audio/x-aiff",
+     "ogg"      => "audio/x-ogg", 
+     "oga"      => "audio/x-ogg",
+     "mid"      => "audio/midi",
+     "wma"      => "audio/x-ms-wma",
+     "mpeg"     => "video/mpeg",
+     "mpg"      => "video/mpeg",
+     "aac"      => "audio/aac",
+     "ogv"      => "video/x-ogg",
+     "ogx"      => "application/x-ogg",
+     "avi"      => "video/x-msvideo",
+     "wmv"      => "video/x-ms-wmv",
+     "asf"      => "video/x-ms-asf",
+     "mov"      => "video/quicktime",
+     "mp4"      => "video/mp4",
+     "rv"       => "video/vnd.m-realvideo",
+     "rm"       => "application/vnd.m-realmedia",
+     "ra"       => "audio/vnd.m-realaudio",
+     "ram"      => "audio/vnd.m-realaudio",
+     "pdf"      => "application/pdf",
+     "fdf"      => "application/vnd.fdf",
+     "class"    => "application/octet-stream",
+     "jar"      => "application/octet-stream",
+     "js"       => "application/x-javascript",
+     "lnk"      => "application/x-hyperlink",
+     "prg"      => "application/x-c64-prg-binary",
+     "d64"      => "application/x-c64-disk-image",
+     "tar"      => "application/x-tar",
+     "sit"      => "application/x-stuffit",
+     "Z"        => "application/x-compress",
+     "gz"       => "application/x-gzip",
+     "dmg"      => "application/octet-stream",
+     "img"      => "application/octet-stream",
+     "lzh"      => "application/octet-stream",
+     "lha"      => "application/octet-stream",
+     "exe"      => "application/octet-stream",
+     "com"      => "application/octet-stream",
+     "zip"      => "application/x-zip-compressed",
+     "hqx"      => "application/x-binhex",
+     "swf"      => "x-shockwave-flash",
+     "flv"      => "video/x-flv",
+     "bin"      => "application/octet-stream");
+
+%content_types =
+    ("html"     => "text/html",
+     "htm"      => "text/html");
+
+# Set of restricted web addresses, either not served or needing authorisation.
+#
+%restrictions = (
+     "/nw"      => "^10\.##^Mozilla#MSIE",
+#     "/status"  => "####admin:admin",
+     "/"        => "###(NPBot|WebZIP|HTTrack|eCatch|Offline Explorer|UdmSearch|WebCopier|internetseer|MSIECrawler|SuperBot|LinkWalker|Tutorial Crawler|WebReaper)",
+    );
+
+$HEADERS = <<"EOF";
+Server: $SERVER_NAME/$PROGRAMVERSION
+MIME-Version: 1.0
+EOF
+
+%content_types = (%system_content_types, %content_types);
+undef %system_content_types;
+
+# Bring in all modules required.
+#
+use forks;
+use forks::shared deadlock => {detect=> 1, resolve => 1};
+use POSIX qw(SIGALRM SIGTERM sigaction);
+use Socket;
+#use IO::Socket;
+#use IO::Select;
+#use IO::Pipe;
+#use IO::Handle;
+use Fcntl qw(F_GETFL F_SETFL O_NONBLOCK O_NDELAY);
+use File::Copy;
+#use File::Temp qw(tempfile);
+use Time::HiRes qw(usleep nanosleep);
+#use URI::Escape;
+#use URI::Encode qw(uri_encode uri_decode);
+use Getopt::Long;
+use CGI::Session;
+use CGI;
+use Utilities;
+#use HTML::Entities;
+use U3SHIELD;
+
+#sub trim {
+#    my @out = @_;
+#    for (@out) {
+#        s/^\s+//;
+#        s/\s+$//;
+#    }
+#    return wantarray ? @out : $out[0];
+#}
+
+sub sock_to_host
+{
+    my $sock = getpeername(STDIN);
+    my($AFC, $cache_port, $thataddr, $zero) = unpack($SOCKADDR, $sock);
+    my $cache_ip = join('.', unpack("C4", $thataddr));
+
+    return (undef, undef, undef) if (!$sock || length($cache_ip));
+
+    $cache_hn = gethostbyaddr($thataddr, 2) || $cache_ip;
+    return ($cache_hn, $cache_port, $cache_ip);
+}
+
+sub _stop_blocking
+{
+    my $socket_handle = shift;
+
+    # Do it the Win32 way.
+    if ($^O eq 'MSWin32') {
+        my $set_it = "1";
+        # 126 is FIONBIO (some docs say 0x7F << 16)
+        # (0x5421 on my Linux 2.4.25 ?!)
+        ioctl($socket_handle,0x80000000 | (4 << 16) | (ord('f') << 8) | 126,$set_it) or die "can't ioctl(): $!\n";
+    }
+
+    # Do it the way everyone else does.
+    else {
+        my $flags = fcntl($socket_handle, F_GETFL, 0) or die "can't getfl(): $!\n";
+        $flags = fcntl($socket_handle, F_SETFL, $flags | O_NONBLOCK) or die "can't setfl(): $!\n";
+    }
+}
+
+# Function to generate the header section of a HTML response to a data request.
+#
+sub htHead
+{
+    my($http, $header, $term) = (@_);
+    return if (0+$http->{VERSION} < 1);
+    print STDOUT "$header\r\n" , ($term) ? "\r\n" : "";
+}
+
+
+# Function to generate the HTML response to a data request.
+#
+sub htResponse
+{
+    ($http, $currentcode, $currentstring) = (@_);
+    $http->{CURRENTCODE} = $currentcode;
+    return if (0+$http->{VERSION} < 1);
+
+    my($what) = <<"EOF";
+HTTP/$http->{VERSION} $http->{CURRENTCODE} $currentstring
+${HEADERS}Date: $http->{RFCDATE}
+EOF
+    $what =~ s/\n/\r\n/g;
+    print STDOUT $what;
+    htHead($http, "Connection: close") if (0+$http->{VERSION} > 1);
+    htHead($http, "Set-Cookie: $http->{COOKIE}");
+}
+
+# Function to generate the content of a HTML data request.
+#
+sub htContent
+{
+    my($http, $what, $ctype, $mode) = (@_);
+    ($contentlength) = $mode || length($what);
+    htHead($http, "Content-Length: $contentlength");
+    htHead($http, "Content-Type: $ctype", 1);
+    return if ($http->{METHOD} eq 'HEAD' || $http->{MODE});
+    print STDOUT $what;
+}
+
+# Function to clear a buffered HTML content response buffer.
+#
+sub htContent_ClearBuf
+{
+    my($http) = (@_);
+
+    $http->{HTMLBUF} = "";
+}
+
+# Function to clear HTML buffer and place initial header information into it.
+#
+sub htContent_InitBuf
+{
+    my($http) = (@_);
+
+    $http->{HTMLBUF} = <<'EOF';
+<!DOCTYPE html PUBLIC "-//W4C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+EOF
+}
+
+# Function to start the BODY section of the response.
+#
+sub htContent_AddBodyStart
+{
+    my($http) = (@_);
+
+    $http->{HTMLBUF} = $http->{HTMLBUF} . <<'EOF';
+    <body>
+EOF
+}
+
+# Function to end the BODY section of the response.
+#
+sub htContent_AddBodyEnd
+{
+    my($http) = (@_);
+
+    $http->{HTMLBUF} = $http->{HTMLBUF} . <<'EOF';
+    </body>
+EOF
+}
+
+# Function to terminate the response.
+#
+sub htContent_CloseBuf
+{
+    my($http) = (@_);
+
+    $http->{HTMLBUF} = $http->{HTMLBUF} . <<'EOF';
+</html>
+EOF
+}
+
+# Function to add data into a HTML content response buffer.
+#
+sub htContent_AddBuf
+{
+    my($http, $what) = (@_);
+
+    $http->{HTMLBUF} = $http->{HTMLBUF} . $what;
+}
+
+# Method to expand a macro into HTML equivalent.
+#
+sub htContent_ExpandMacro
+{
+    my ($http, $str, $includeFile, $activeMenu, $activeSubMenu) = @_;
+    my ($allPorts, $boardPage, $dynstr, $level, @macro, $returnHTML) = (0, "", "", 0, (), "");
+
+    # Split macro up into it's components.
+    #
+    @macro = split(/:/, $str);
+    if($macro[0] eq "INCLUDEFILE" || $str eq "INCLUDEFILE")
+    {
+        if(defined($includeFile) && $includeFile ne "")
+        {
+            open(HTML_HDL, "<", "$http->{PARAMS}->{'HTTP_DOC_PATH'}/inc/$includeFile")
+                or die "Cannot open HTML Include File:$http->{PARAMS}->{'HTTP_DOC_PATH'}/inc/$includeFile";
+            while(my $incLine=<HTML_HDL>)
+            {
+               $returnHTML = $returnHTML . $incLine;
+            }
+            close(HTML_HDL);
+        }
+    } 
+
+    # CONTROL
+    elsif($macro[0] eq "SETOUTPUTS")
+    {
+        $boardPage="Set_Outputs";
+    }
+    elsif($macro[0] eq "READINPUTS")
+    {
+        $boardPage="Read_Inputs";
+    }
+
+    # STATUS
+    elsif($macro[0] eq "ACTIVEPORTDATA")
+    {
+        $boardPage="Get_PortData_Table";
+        $allPorts=0;
+    }
+    elsif($macro[0] eq "ALLPORTDATA")
+    {
+        $boardPage="Get_PortData_Table";
+        $allPorts=1;
+    }
+    elsif($macro[0] eq "VARIABLES")
+    {
+        $boardPage="Get_Variables_Table";
+    }
+    elsif($macro[0] eq "DEVICELOG")
+    {
+        $boardPage="Get_Device_Log";
+    }
+    elsif($macro[0] eq "WEBSERVER")
+    {
+        $returnHTML = htmlGetVariablesTable($http);
+    }
+
+    # CONFIG
+    elsif($macro[0] eq "CONFIGDEVICES")
+    {
+        $boardPage="Config_Devices";
+    }
+    elsif($macro[0] eq "CONFIGPORTS")
+    {
+        $boardPage="Config_Ports";
+    }
+    elsif($macro[0] eq "CONFIGTIMERS")
+    {
+        $boardPage="Config_Timers";
+    }
+    elsif($macro[0] eq "CONFIGPING")
+    {
+        $boardPage="Config_Ping";
+    }
+
+    # SETTINGS
+    elsif($macro[0] eq "DDNS")
+    {
+        $returnHTML = htmlSetDDNS();
+    }
+    elsif($macro[0] eq "EMAIL")
+    {
+        $returnHTML = htmlSetEMAIL();
+    }
+    elsif($macro[0] eq "CHANGEPASSWORD")
+    {
+        $returnHTML = htmlChangePassword();
+    }
+    elsif($macro[0] eq "CHANGETIME")
+    {
+        $returnHTML = htmlChangeTime();
+    }
+
+    # ADMIN
+    elsif($macro[0] eq "LOGOUT")
+    {
+        $returnHTML = htmlLogOut();
+    }
+
+    # MISCELLANEOUS
+    elsif($macro[0] eq "BOARDNAME")
+    {
+        $returnHTML = "$http->{PARAMS}->{'BOARD'}";
+    }
+
+    # MENU ACTIVATION
+    elsif($macro[0] eq "ACTIVEMENU")
+    {
+        # Level can be given as a variable, so evaluate it.
+        #
+        $dynstr = "\$level = $macro[1];"; eval $dynstr;
+
+        # If this user is authorised, show the menu as active.
+        #
+        if(isAuthorised($http, $level))
+        {
+            if($macro[2] eq "PRIMARY")
+            {
+                if($macro[3] eq $activeMenu)
+                {
+                    $returnHTML = "class=\"active open\"";
+                } else
+                {
+                    $returnHTML = "";
+                }
+            }
+            elsif($macro[2] eq "SUB")
+            {
+                if($macro[3] eq $activeMenu && $macro[4] eq $activeSubMenu)
+                {
+                    $returnHTML = "class=\"active\"";
+                } else
+                {
+                    $returnHTML = "";
+                }
+            } else
+            {
+                $returnHTML = "";
+            }
+        } else
+        {
+            # Otherwise disable the menu.
+            #
+#$returnHTML = "class=\"disabled\"";
+            $returnHTML = "class=\"hidden\"";
+        }
+    }
+
+    # Variables.
+    #
+    elsif($macro[0] eq "VAR")
+    {
+        # Date.
+        #
+        if($macro[1] eq "TIME" || $macro[1] eq "DATE")
+        {
+            my ($sec, $min, $hour, $day, $month, $lyear, undef, undef, undef) = localtime();
+
+            if($macro[1] eq "DATE")
+            {
+                $day        = sprintf("%02d", $day);
+                $month      = sprintf("%02d", $month + 1);
+                $lyear      = sprintf("%04d", $lyear + 1900);
+                $returnHTML = "$day/$month/$lyear";
+            } else
+            {
+                $sec        = sprintf("%02d", $sec);
+                $min        = sprintf("%02d", $min);
+                $hour       = sprintf("%02d", $hour);
+                $returnHTML = "$hour:$min:$sec";
+            }
+        } else
+        {
+            $dynstr = "\$returnHTML = $macro[1];"; eval $dynstr;
+        }
+    }
+
+    # If we want a page from the attached I/O board module, call its general HTML entry point.
+    #
+    if($boardPage ne "")
+    {
+        $dynstr  = "\$returnHTML = $http->{PARAMS}->{BOARD}::HTML_CreatePage(\$http, \$boardPage, \$allPorts)"; eval $dynstr;
+    }
+
+    # Return macro equivalent string.
+    #
+    return($returnHTML);
+}
+
+# Function to add data and expand macros into a HTML content response buffer.
+#
+sub htContent_AddExpandBuf
+{
+    my($http, $addHTML, $includeFile, $activeMenu, $activeSubMenu) = (@_);
+    my $tmpWWWBuf = "";
+
+    # If no html template provided, expand the include file as the template.
+    #
+    if($addHTML eq "")
+    {
+        # Simply expand the include file.
+        #
+        $http->{HTMLBUF} = $http->{HTMLBUF} . htContent_ExpandMacro($http, "INCLUDEFILE", $includeFile, $activeMenu, $activeSubMenu);
+    } else
+    {
+        # Else tag on the HTML provided.
+        #
+        $http->{HTMLBUF} = $http->{HTMLBUF} . $addHTML;
+    }
+
+    # Go through the buffer and expand macros as needed.
+    #
+    my @lines = split /\n/, $http->{HTMLBUF};
+    foreach my $line( @lines )
+    { 
+        # Expand any macros inline.
+        # The macro is in the form:
+        #     [DPWR]a:b:c:d:..n[/DPWR]
+        #
+        my ($startidx, $endidx) = (0, 0);
+        while(($startidx=index($line, '[DPWR]')) != -1 && ($endidx = index($line, "[/DPWR]")) != -1)
+        {
+            my $size = $endidx - ($startidx + 6);
+            my $buf = htContent_ExpandMacro($http, substr($line, $startidx+6, $size), $includeFile, $activeMenu, $activeSubMenu);
+            $buf = "" unless(defined $buf); # Kludge to stop perl warnings complaining!
+            $line = substr($line, 0, $startidx) . $buf . substr($line, $endidx + 7);
+        }
+
+        $tmpWWWBuf = $tmpWWWBuf . $line . "\n";
+    }
+
+    # Update the WWW buffer.
+    #
+    $http->{HTMLBUF} = $tmpWWWBuf;
+}
+
+# Function to send the data stored in the HTML content response buffer.
+#
+sub htContent_SendBuf
+{
+    my($http, $ctype) = (@_);
+
+    # Return if no data buffered.
+    #
+    if(length($http->{HTMLBUF}) == 0) { return; }
+
+    # Add additional headers.
+    #
+    $contentlength = length($http->{HTMLBUF});
+    htHead($http, "Content-Length: $contentlength");
+    htHead($http, "Content-Type: $ctype", 1);
+
+    #Utilities::log(0, MODULE, "htContent_SendBuf", "$http->{HTMLBUF}");
+
+    # Send out the buffer.
+    #
+    print STDOUT $http->{HTMLBUF};
+}
+
+# Local logging function to specifically log HTML requests and errors.
+#
+sub httpLog
+{
+    my ($http, $errMsg) = @_;
+
+    if (open(LOGHDL, ">>$http->{PARAMS}->{'HTTP_LOGFILE'}"))
+    {
+        my $q = $http->{ADDRESS} . (($http->{VARIABLES}) ? "?$http->{VARIABLES}" : "");
+        $contentlength += 0;
+        $contentlength = 0 if ($http->{METHOD} eq 'HEAD');
+        $http->{HOSTNAME} ||= "-";
+        my $user = $http->{SESSION}->param('USER');
+        $user ||= "-";
+        if(defined($errMsg) && $errMsg ne "")
+        {
+            print LOGHDL <<"EOF";
+$http->{HOSTNAME} - $user [$http->{DATE}] "$errMsg"
+EOF
+        } else
+        {
+            print LOGHDL <<"EOF";
+$http->{HOSTNAME} - $user [$http->{DATE}] "$http->{METHOD} $q HTTP/$http->{VERSION}" $http->{CURRENTCODE} $contentlength "$http->{REFERENCE}" "$http->{USERAGENT}"
+EOF
+        }
+        close(LOGHDL);
+    }
+}
+
+# Local logging function to specifically log HTML requests and errors.
+#
+sub Log
+{
+    my $msg = shift;
+
+    if (open(LOGHDL, ">>$PARAMS{'HTTP_LOGFILE'}"))
+    {
+        print LOGHDL "$msg\n";
+        close(LOGHDL);
+    }
+}
+
+sub thrExitAll { close(STDIN); close(STDOUT); kill(9,$secondary_pid) if ($secondary_pid);exit;  }
+
+# Function to send a response when an event occurs in the perl program requiring an immediate termination,
+# useful for error tracing.
+#
+sub dead
+{
+    htResponse(500, "Server Error");
+    htError("Server Error", <<"EOF");
+The server cannot comply with your request for resource <tt>$::address</tt>.
+Please attempt to notify the administrators.
+<p>Useful(?) debugging information:
+<pre>
+@_
+</pre>
+EOF
+    thrLogExit();
+}
+
+##############################################################
+# Signal Handlers to trap and process signals sent from the
+# system (ie. via the kill command).
+##############################################################
+
+# Signal handler to trap INTERRUPT signal.
+#
+sub signal_INT_handler
+{
+    $TERMINATE_PROC = 1;
+}
+
+# Signal handler to trap TERMINATE signal.
+#
+sub signal_TERM_handler
+{
+    $TERMINATE_PROC = 1;
+}
+
+# Signal handler to trap HANGUP signal.
+#
+sub signal_HUP_handler
+{
+    $TERMINATE_PROC = 1;
+}
+
+# Signal handler to trap USR1 signal.
+#
+sub signal_USR1_handler
+{
+    $TERMINATE_PROC = 1;
+}
+
+# Signal handler to trap USR2 signal.
+#
+sub signal_USR2_handler
+{
+    $TERMINATE_PROC = 1;
+}
+
+# Signal handler to trap PIPE signal.
+#
+sub signal_PIPE_handler
+{
+    Utilities::log(0, MODULE, "signal_PIPE_handler", "SIGPIPE received.");
+}
+
+# Signal handler to trap ALRM signal.
+#
+sub signal_ALRM_handler
+{
+    Utilities::log(0, MODULE, "signal_ALRM_handler", "SIGALRM received.");
+}
+
+# Setup default signal handlers.
+#
+sub defaultsignals
+{
+    $SIG{INT}   = \&signal_INT_handler;
+    $SIG{TERM}  = \&signal_TERM_handler;
+    $SIG{HUP}   = \&signal_HUP_handler;
+    $SIG{USR1}  = \&signal_USR1_handler;
+    $SIG{USR2}  = \&signal_USR2_handler;
+    $SIG{PIPE}  = \&signal_PIPE_handler;
+    $SIG{ALRM}  = \&signal_ALRM_handler;
+#    $SIG{'__DIE__'} = \&dead;
+#    sigaction SIGALRM, new POSIX::SigAction \&thrExit
+#        or die "sigalrm failed: $!\n";
+    sigaction SIGTERM, new POSIX::SigAction \&thrExitAll
+        or die "sigterm failed: $!\n";
+}
+##############################################################
+
+##############################################################
+# Internally served web-pages.
+##############################################################
+
+sub isAuthorised
+{
+    my ($http, $level) = @_;
+    my $authorised = 0;
+
+    # If the level is 0 (ALL) or less than or equal to the given level, user is authorised.
+    # The higher the users level, the more priviledges they have.
+    #
+    if($level == $ACCESS_LEVEL_ALL || $level <= $http->{SESSION}->param('LEVEL'))
+    {
+        $authorised = 1;
+    }
+    return($authorised);
+}
+
+sub processPOST_Data
+{
+    # Parameters.
+    #
+    my ($http) = @_;
+
+    # Split the post data into pairs and process into internal structures.
+    #
+    my @varPairs = split(/&/, $http->{POSTDATA});
+    my %postData   = ();
+
+    # Pre process POST data - remove encoding.
+    #
+    foreach my $name_value ( @varPairs )
+    {
+        my( $name, $value ) = split /=/, $name_value;
+
+        $name =~ tr/+/ /;
+        $name =~ s/%([\da-f][\da-f])/chr( hex($1) )/egi;
+
+        $value = "" unless defined $value;
+        $value =~ tr/+/ /;
+        $value =~ s/%([\da-f][\da-f])/chr( hex($1) )/egi;
+
+		# Due to InputMask adding trailing underscores, need to remove them from integers.
+		#
+		$value =~ s/^([0-9]*?)_*$/$1/;
+
+        $postData{$name} = $value;
+    }
+
+    # Update each variable in this thread's memory, then write the required command into an exec file for the
+    # parent to issue such that the parent is updated.
+    #
+    foreach my $key (keys %postData)
+    {
+        # If login id given, check credentials.
+        #
+        if($key eq "LOGIN_USER" && defined $postData{LOGIN_PASSWORD})
+        {
+            $http->{SESSION}->param('login-msg', "User or Password not recognised!");
+            for(my $udx=0; $udx <= $PARAMS{MAXUSER}; $udx++)
+            {
+                my ($dynstr, $user, $pwd, $level) = (undef, undef, undef, undef);
+                $dynstr  = "\$user = \$http->{PARAMS}->{LOGIN_USER_${udx}}; \$pwd = \$http->{PARAMS}->{LOGIN_PASSWORD_${udx}}; \$level = \$http->{PARAMS}->{LOGIN_LEVEL_${udx}};"; eval $dynstr;
+
+                # Check users in lower case.
+                #
+                $user = "" unless(defined $user);
+                if(lc($postData{LOGIN_USER}) eq lc($user))
+                {
+my $enc=Utilities::encryptPassword($postData{LOGIN_PASSWORD}, 10);
+Utilities::log(0, MODULE, "httpServer", "PASSWORD=$postData{LOGIN_PASSWORD}=$enc");
+                    # Encrypt the given password with the salt of the stored password, if the encrypted
+                    # strings dont match, then bad password.
+                    #
+                    if(crypt($postData{LOGIN_PASSWORD}, substr($pwd, 0, 2)) eq $pwd || $pwd eq "")
+                    {
+                        $http->{SESSION}->param("IP",             $http->{IP});
+                        $http->{SESSION}->param("HOST",           $http->{HOSTNAME});
+                        $http->{SESSION}->param("PORT",           $http->{PORT});
+                        $http->{SESSION}->param("USER",           $user);
+                        $http->{SESSION}->param("PASSWORD",       $pwd);
+                        $http->{SESSION}->param("LEVEL",          $level);
+                        $http->{SESSION}->param("~logged-in",     1);
+                        $http->{SESSION}->param('login-msg',      "");
+                    }
+                }
+            }
+        }
+
+        # Password change?
+        #
+        if($key eq "ACTION" && $postData{$key} eq "SET_PASSWORD")
+        {
+            $http->{SESSION}->param('login-msg', "User or Password not recognised!");
+            for(my $udx=0; $udx <= $PARAMS{MAXUSER}; $udx++)
+            {
+                my ($dynstr, $user, $pwd, $level) = (undef, undef, undef, undef);
+                $dynstr  = "\$user = \$http->{PARAMS}->{LOGIN_USER_${udx}}; \$pwd = \$http->{PARAMS}->{LOGIN_PASSWORD_${udx}}; \$level = \$http->{PARAMS}->{LOGIN_LEVEL_${udx}};"; eval $dynstr;
+
+                # Check users in lower case.
+                #
+                $user = "" unless(defined $user);
+                if(lc($http->{SESSION}->param("USER")) eq lc($user))
+                {
+                    # Encrypt the given password with the salt of the stored password, if it matches with the verification
+                    # password given or the original password is not set and the verification password is not set,
+                    # proceed to next stage.
+                    #
+                    if(crypt($postData{CURRENT_PASSWORD}, substr($pwd,0,2)) eq $pwd ||
+                       ($pwd eq "" && $postData{CURRENT_PASSWORD} eq ""))
+                    {
+                        # Passwords match?
+                        #
+                        if($postData{NEW_PASSWORD} eq $postData{VERIFY_PASSWORD})
+                        {
+                            my $newPwd=Utilities::encryptPassword($postData{NEW_PASSWORD}, 10);
+                            $http->{SESSION}->param("PASSWORD", $newPwd);
+
+                            # Lock the child command buffer, mechanism to update the parents values.
+                            #
+                            lock($http->{CHLDCMDCNT});
+                            my $chldcnt = $http->{CHLDCMDCNT};
+
+                            # Place commands into execution buffer to be run in parent.
+                            #
+                            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{LOGIN_PASSWORD_${udx}} = \"$newPwd\";";
+                            $chldcnt++;
+                            $http->{CHLDCMDBUF}[$chldcnt] = "writeParams();";
+                            $chldcnt++;
+
+                            # Update child command counter before freeing lock.
+                            #
+                            $http->{CHLDCMDCNT} = $chldcnt;
+                            $http->{SESSION}->param('setpwd-msg', "Password successfully updated!");
+                        } else
+                        {
+                            $http->{SESSION}->param('setpwd-msg', "New and re-typed fields do not match!");
+                        }
+                    } else
+                    {
+                        $http->{SESSION}->param('setpwd-msg', "Current password entered does not match stored password!");
+                    }
+                }
+            }
+        }
+
+        # DDNS change?
+        #
+        if($key eq "ACTION" && $postData{$key} eq "SET_DDNS")
+        {
+            # Update local copies for this session.
+            #
+            $http->{PARAMS}->{DDNS_ENABLE}          = $postData{MODE}            if(defined $postData{MODE});
+            $http->{PARAMS}->{DDNS_SERVER_IP}       = $postData{SERVER_IP}       if(defined $postData{SERVER_IP});
+            $http->{PARAMS}->{DDNS_CLIENT_DOMAIN}   = $postData{CLIENT_DOMAIN}   if(defined $postData{CLIENT_DOMAIN});
+            $http->{PARAMS}->{DDNS_CLIENT_USERNAME} = $postData{CLIENT_USERNAME} if(defined $postData{CLIENT_USERNAME});
+            $http->{PARAMS}->{DDNS_CLIENT_PASSWORD} = $postData{CLIENT_PASSWORD} if(defined $postData{CLIENT_PASSWORD});
+            $http->{PARAMS}->{DDNS_PROXY_ENABLE}    = $postData{PROXY_ENABLE}    if(defined $postData{PROXY_ENABLE});
+            $http->{PARAMS}->{DDNS_PROXY_IP}        = $postData{PROXY_IP}        if(defined $postData{PROXY_IP});
+            $http->{PARAMS}->{DDNS_PROXY_PORT}      = $postData{PROXY_PORT}      if(defined $postData{PROXY_PORT});
+
+            # Lock the child command buffer, mechanism to update the parents values.
+            #
+            lock($http->{CHLDCMDCNT});
+            my $chldcnt = $http->{CHLDCMDCNT};
+
+            # Place commands into execution buffer to be run in parent.
+            #
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_ENABLE}          = \'$http->{PARAMS}->{DDNS_ENABLE}\';";          $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_SERVER_IP}       = \'$http->{PARAMS}->{DDNS_SERVER_IP}\';";       $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_CLIENT_DOMAIN}   = \'$http->{PARAMS}->{DDNS_CLIENT_DOMAIN}\';";   $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_CLIENT_USERNAME} = \'$http->{PARAMS}->{DDNS_CLIENT_USERNAME}\';"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_CLIENT_PASSWORD} = \'$http->{PARAMS}->{DDNS_CLIENT_PASSWORD}\';"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_PROXY_ENABLE}    = \'$http->{PARAMS}->{DDNS_PROXY_ENABLE}\';";    $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_PROXY_IP}        = \'$http->{PARAMS}->{DDNS_PROXY_IP}\';";        $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{DDNS_PROXY_PORT}      = $http->{PARAMS}->{DDNS_PROXY_PORT};";        $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "writeParams();"; $chldcnt++;
+
+            # Update child command counter before freeing lock.
+            #
+            $http->{CHLDCMDCNT} = $chldcnt;
+
+            # Setup Dynamic DNS address with given parameters.
+            #
+			Utilities::setupDDNS($postData{MODE}, $postData{SERVER_IP}, $postData{CLIENT_DOMAIN}, $postData{CLIENT_USERNAME},
+					             $postData{CLIENT_PASSWORD}, $postData{PROXY_ENABLE}, $postData{PROXY_IP}, $postData{PROXY_PORT});
+        }
+
+        # Email change?
+        #
+        if($key eq "ACTION" && $postData{$key} eq "SET_EMAIL")
+        {
+            # Update local copies for this session.
+            #
+            $http->{PARAMS}->{EMAIL_SMTP_OR_POP3}       = $postData{MODE}               if(defined $postData{MODE});
+            $http->{PARAMS}->{EMAIL_USE_AUTHENTICATION} = $postData{USE_AUTHENTICATION} if(defined $postData{USE_AUTHENTICATION});
+            $http->{PARAMS}->{EMAIL_SMTP_SERVER_IP}     = $postData{SMTP_SERVER_IP}     if(defined $postData{SMTP_SERVER_IP});
+            $http->{PARAMS}->{EMAIL_SMTP_SERVER_PORT}   = $postData{SMTP_SERVER_PORT}   if(defined $postData{SMTP_SERVER_PORT});
+            $http->{PARAMS}->{EMAIL_POP3_SERVER_IP}     = $postData{POP3_SERVER_IP}     if(defined $postData{POP3_SERVER_IP});
+            $http->{PARAMS}->{EMAIL_POP3_SERVER_PORT}   = $postData{POP3_SERVER_PORT}   if(defined $postData{POP3_SERVER_PORT});
+            $http->{PARAMS}->{EMAIL_USERNAME}           = $postData{USERNAME}           if(defined $postData{USERNAME});
+            $http->{PARAMS}->{EMAIL_PASSWORD}           = $postData{PASSWORD}           if(defined $postData{PASSWORD});
+            $http->{PARAMS}->{EMAIL_SENDER}             = $postData{SENDER}             if(defined $postData{SENDER});
+            $http->{PARAMS}->{EMAIL_RECIPIENT1}         = $postData{RECIPIENT1}         if(defined $postData{RECIPIENT1});
+            $http->{PARAMS}->{EMAIL_RECIPIENT2}         = $postData{RECIPIENT2}         if(defined $postData{RECIPIENT2});
+            $http->{PARAMS}->{EMAIL_RECIPIENT3}         = $postData{RECIPIENT3}         if(defined $postData{RECIPIENT3});
+            $http->{PARAMS}->{EMAIL_SUBJECT}            = $postData{SUBJECT}            if(defined $postData{SUBJECT});
+            $http->{PARAMS}->{EMAIL_MAILBODY}           = $postData{MAILBODY}           if(defined $postData{MAILBODY});
+
+            # Lock the child command buffer, mechanism to update the parents values.
+            #
+            lock($http->{CHLDCMDCNT});
+            my $chldcnt = $http->{CHLDCMDCNT};
+
+            # Place commands into execution buffer to be run in parent.
+            #
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_SMTP_OR_POP3}       = \'$http->{PARAMS}->{EMAIL_SMTP_OR_POP3}\';";       $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_USE_AUTHENTICATION} = \'$http->{PARAMS}->{EMAIL_USE_AUTHENTICATION}\';"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_SMTP_SERVER_IP}     = \'$http->{PARAMS}->{EMAIL_SMTP_SERVER_IP}\';";     $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_SMTP_SERVER_PORT}   = $http->{PARAMS}->{EMAIL_SMTP_SERVER_PORT};";     $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_POP3_SERVER_IP}     = \'$http->{PARAMS}->{EMAIL_POP3_SERVER_IP}\';";     $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_POP3_SERVER_PORT}   = $http->{PARAMS}->{EMAIL_POP3_SERVER_PORT};";     $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_USERNAME}           = \"$http->{PARAMS}->{EMAIL_USERNAME}\";";           $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_PASSWORD}           = \"$http->{PARAMS}->{EMAIL_PASSWORD}\";";           $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_SENDER}             = \'$http->{PARAMS}->{EMAIL_SENDER}\';";             $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_RECIPIENT1}         = \'$http->{PARAMS}->{EMAIL_RECIPIENT1}\';";         $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_RECIPIENT2}         = \'$http->{PARAMS}->{EMAIL_RECIPIENT2}\';";         $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_RECIPIENT3}         = \'$http->{PARAMS}->{EMAIL_RECIPIENT3}\';";         $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_SUBJECT}            = \'$http->{PARAMS}->{EMAIL_SUBJECT}\';";            $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{EMAIL_MAILBODY}           = \'$http->{PARAMS}->{EMAIL_MAILBODY}\';";           $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "writeParams();"; $chldcnt++;
+
+            # Update child command counter before freeing lock.
+            #
+            $http->{CHLDCMDCNT} = $chldcnt;
+
+        }
+
+        # Time change?
+        #
+        if($key eq "ACTION" && $postData{$key} eq "SET_TIME")
+        {
+            # Update local copies for this session.
+            #
+            $http->{PARAMS}->{TIME_LOCAL_OR_NTP}        = $postData{MODE}                if(defined $postData{MODE});
+            $http->{PARAMS}->{TIME_NTP_SERVER_IP}       = $postData{NTP_SERVER_IP}       if(defined $postData{NTP_SERVER_IP});
+            $http->{PARAMS}->{TIME_NTP_TIMEZONE_ID}     = $postData{NTP_TIMEZONE_ID}     if(defined $postData{NTP_TIMEZONE_ID});
+            $http->{PARAMS}->{TIME_NTP_TIMEZONE_DST}    = $postData{NTP_TIMEZONE_DST}    if(defined $postData{NTP_TIMEZONE_DST});
+            $http->{PARAMS}->{TIME_NTP_TIMEZONE_OFFSET} = $postData{NTP_TIMEZONE_OFFSET} if(defined $postData{NTP_TIMEZONE_OFFSET});
+
+            # Lock the child command buffer, mechanism to update the parents values.
+            #
+            lock($http->{CHLDCMDCNT});
+            my $chldcnt = $http->{CHLDCMDCNT};
+
+            # Place commands into execution buffer to be run in parent.
+            #
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{TIME_LOCAL_OR_NTP}        = \'$http->{PARAMS}->{TIME_LOCAL_OR_NTP}\';";    $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{TIME_NTP_SERVER_IP}       = \'$http->{PARAMS}->{TIME_NTP_SERVER_IP}\';";   $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{TIME_NTP_TIMEZONE_ID}     = $http->{PARAMS}->{TIME_NTP_TIMEZONE_ID};"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{TIME_NTP_TIMEZONE_DST}    = $http->{PARAMS}->{TIME_NTP_TIMEZONE_DST};"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{TIME_NTP_TIMEZONE_OFFSET} = $http->{PARAMS}->{TIME_NTP_TIMEZONE_OFFSET};"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "writeParams();"; $chldcnt++;
+
+            # Setup time according to method given.
+            #
+			Utilities::setTime($postData{MODE}, $postData{DATE}, $postData{TIME}, $postData{NTP_SERVER_IP}, $postData{NTP_TIMEZONE_ID},
+					           $postData{NTP_TIMEZONE_DST}, $postData{NTP_TIMEZONE_OFFSET});
+
+            # Update child command counter before freeing lock.
+            #
+            $http->{CHLDCMDCNT} = $chldcnt;
+        }
+
+        # Parameter change?
+        #
+        if($key eq "ACTION" && $postData{$key} eq "SET_PARAMETERS")
+        {
+            # Update local copies for this session.
+            #
+            $http->{PARAMS}->{HTTP_SERVER_HOST}     = $postData{HTTP_SERVER_HOST}     if(defined $postData{HTTP_SERVER_HOST});
+            $http->{PARAMS}->{HTTP_SERVER_PORT}     = $postData{HTTP_SERVER_PORT}     if(defined $postData{HTTP_SERVER_PORT});
+            $http->{PARAMS}->{HTTP_DOC_PATH}        = $postData{HTTP_DOC_PATH}        if(defined $postData{HTTP_DOC_PATH});
+            $http->{PARAMS}->{HTTP_LOGFILE}         = $postData{HTTP_LOGFILE}         if(defined $postData{HTTP_LOGFILE});
+            $http->{PARAMS}->{HTTP_PASSWORD}        = $postData{HTTP_PASSWORD}        if(defined $postData{HTTP_PASSWORD});
+            $http->{PARAMS}->{HTTP_MAX_RETRIES}     = $postData{HTTP_MAX_RETRIES}     if(defined $postData{HTTP_MAX_RETRIES});
+			$http->{PARAMS}->{HTTP_SESSION_TIMEOUT} = $postData{HTTP_SESSION_TIMEOUT} if(defined $postData{HTTP_SESSION_TIMEOUT});
+            $http->{PARAMS}->{TITLE}                = $postData{TITLE}                if(defined $postData{TITLE});
+            $http->{PARAMS}->{LOGFILE}              = $postData{LOGFILE}              if(defined $postData{LOGFILE});
+
+            # Lock the child command buffer, mechanism to update the parents values.
+            #
+            lock($http->{CHLDCMDCNT});
+            my $chldcnt = $http->{CHLDCMDCNT};
+
+            # Place commands into execution buffer to be run in parent.
+            #
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{HTTP_SERVER_HOST}     = \'$http->{PARAMS}->{HTTP_SERVER_HOST}\';"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{HTTP_SERVER_PORT}     = \'$http->{PARAMS}->{HTTP_SERVER_PORT}\';"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{HTTP_DOC_PATH}        = \'$http->{PARAMS}->{HTTP_DOC_PATH}\';";    $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{HTTP_LOGFILE}         = \'$http->{PARAMS}->{HTTP_LOGFILE}\';";     $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{HTTP_PASSWORD}        = \'$http->{PARAMS}->{HTTP_PASSWORD}\';";    $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{HTTP_MAX_RETRIES}     = \'$http->{PARAMS}->{HTTP_MAX_RETRIES}\';"; $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{HTTP_SESSION_TIMEOUT} = \'$http->{PARAMS}->{HTTP_SESSION_TIMEOUT}\';";    $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{TITLE}                = \'$http->{PARAMS}->{TITLE}\';";            $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$http{PARAMS}->{LOGFILE}              = \'$http->{PARAMS}->{LOGFILE}\';";          $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$EXIT_CODE                            = 1;";                                       $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "writeParams();";                                                                    $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "usleep(5000000);";                                                                  $chldcnt++;
+            $http->{CHLDCMDBUF}[$chldcnt] = "\$TERMINATE_PROC                       = 1;";                                       $chldcnt++;
+
+            # Update child command counter before freeing lock.
+            #
+            $http->{CHLDCMDCNT} = $chldcnt;
+
+            # Indicate that the server is about to restart.
+            #
+            $http->{SESSION}->param('session-msg', "Parameters saved, restarting DPWR server. Please wait 60 seconds for restart, this page will automatically refresh.");
+            $http->{SESSION}->param('forward-url', 'getpage?parameters');
+            $http->{SESSION}->param('forward-time', 60);
+        }
+    }
+}
+
+# Function to place all the internal variables of this module into an HTML table for
+# inclusion in a web page.
+#
+sub htmlGetVariablesTable
+{
+    # Parameters.
+    #
+    my ($http) = @_;
+
+    my $HTMLBUF = "";
+    my $logsnap = "";
+
+    # Get a snapshot of the current log file.
+    #
+    if(sysopen(SP, $http->{PARAMS}->{'HTTP_LOGFILE'}, 0))
+    {
+        seek(SP, -5000, 2);
+        undef $/;
+        $logsnap = <SP>;
+        $logsnap =~ s/^[^\n]+\n//s if (length($logsnap) > 4999);
+        close(SP);
+    }
+    $p = (time() - $http->{STATIOSUPTIME});
+    $spr = $p/$http->{STATIOSREQ};
+    $rps = $http->{STATIOSREQ}/$p;
+    $d = int($p / 86400); $p -= $d * 86400;
+    $h = int($p / 3600);  $p -= $h * 3600;
+    $m = int($p / 60);    $s  = $p - ($m * 60);
+    ("0$s" =~ /(\d{2})$/) && ($s = $1);
+    ("0$m" =~ /(\d{2})$/) && ($m = $1);
+    $h +=0; $d += 0;
+    $suptime = scalar localtime $http->{STATIOSUPTIME};
+    $thistime = scalar localtime;
+
+    # Build a table to hold the variables to be displayed.
+    #
+    $HTMLBUF = <<"EOF";
+              <!-- page start-->
+              <div class="row">
+                  <div class="col-sm-12">
+                      <section class="panel">
+                          <header class="panel-heading">
+                             <strong>WebServer Status</strong>
+                              <span class="tools pull-right">
+                                 <a href="javascript:;" class="fa fa-chevron-down"></a>
+                                 <a href="javascript:;" class="fa fa-times"></a>
+                              </span>
+                          </header>
+                          <div class="panel-body">
+                              <div class="adv-table">
+                                  <table  class="display table table-bordered table-striped" id="dynamic-nofrills-table">
+                                      <thead>
+                                          <tr>
+                                              <th>Started At</th>
+                                              <th>Uptime</th>
+                                              <th>Previous Request Time</th>
+                                              <th>This Request Time AS</th>
+                                              <th>Requests Received</th>
+                                              <th>Average Time Between Requests</th>
+                                              <th>Requests This Second</th>
+                                              <th>Peak Requests Per Second</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                         <tr>
+                                             <td align="left">$suptime</td>
+                                             <td>$d days, $h:$m:$s</td>
+                                             <td>$http->{STATIOSLTR}</td>
+                                             <td>$thistime</td>
+                                             <td>$http->{STATIOSREQ}</td>
+                                             <td>${spr}s (${rps}req/sec)</td>
+                                             <td>$http->{STATIOSLASTSEC}</td>
+                                             <td>$http->{STATIOSMAXSEC}</td>
+                                         </tr>
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      </section>
+                      <section class="panel">
+                          <header class="panel-heading">
+                             <strong>WebServer Variables</strong>
+                              <span class="tools pull-right">
+                                 <a href="javascript:;" class="fa fa-chevron-down"></a>
+                                 <a href="javascript:;" class="fa fa-times"></a>
+                              </span>
+                          </header>
+                          <div class="panel-body">
+                              <div class="adv-table">
+                                  <table  class="display table table-bordered table-striped" id="dynamic-nofrills-table">
+                                      <thead>
+                                          <tr>
+                                              <th>HTTP_SERVER_HOST</th>
+                                              <th>HTTP_SERVER_PORT</th>
+                                              <th>HTTP_DOC_PATH</th>
+                                              <th>HTTP_LOGFILE</th>
+                                              <th>HTTP_PASSWORD</th>
+                                              <th>HTTP_MAX_RETRIES</th>
+                                              <th>HTTP_SESSION_TIMEOUT</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                         <tr>
+                                              <td align="left"><font size="2">$http->{PARAMS}->{'HTTP_SERVER_HOST'}</font></td>
+                                              <td align="left"><font size="2">$http->{PARAMS}->{'HTTP_SERVER_PORT'}</font></td>
+                                              <td align="left"><font size="2">$http->{PARAMS}->{'HTTP_DOC_PATH'}</font></td>
+                                              <td align="left"><font size="2">$http->{PARAMS}->{'HTTP_LOGFILE'}</font></td>
+                                              <td align="left"><font size="2">$http->{PARAMS}->{'HTTP_PASSWORD'}</font></td>
+                                              <td align="left"><font size="2">$http->{PARAMS}->{'HTTP_MAX_RETRIES'}</font></td>
+                                              <td align="left"><font size="2">$http->{PARAMS}->{'HTTP_SESSION_TIMEOUT'}</font></td>
+                                         </tr>
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      </section>
+EOF
+
+    # Finish off the html before sending.
+    #
+    $HTMLBUF = $HTMLBUF . <<"EOF";
+                      <section class="panel">
+                          <header class="panel-heading">
+                             <strong>WebServer Log</strong>
+                              <span class="tools pull-right">
+                                 <a href="javascript:;" class="fa fa-chevron-down"></a>
+                                 <a href="javascript:;" class="fa fa-times"></a>
+                              </span>
+                          </header>
+                          <div class="panel-body">
+                              <div class="adv-table">
+                                  <table  class="display table table-bordered table-striped" id="dynamic-nofrills-table">
+                                      <tbody>
+                                          <tr>
+                                              <td>
+                                                  <form action = "/getpage" method = "post">
+                                                      <textarea name = "bletch" rows = "10" cols = "132">$logsnap</textarea>
+                                                  </form>
+                                              </td>
+                                          </tr>
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      </section>
+                  </div>
+              </div>
+EOF
+
+    # Return completed HTML to caller.
+    #
+    return $HTMLBUF;
+}
+
+# Function to execute a PHP CGI request.
+#
+sub executePHP
+{
+    # PHP to execute?
+    my ($http) = @_;
+
+    httpLog($http, "Executing PHP:$http->{ADDRESS}");
+    $PHP = '/usr/lib/cgi-bin/php5';
+
+    $ENV{'DOCUMENT_ROOT'} = "$http->{PARAMS}->{'HTTP_DOC_PATH'}";
+    $ENV{'REDIRECT_STATUS'} = "200";
+    $ENV{'REDIRECT_URL'} = $http->{ADDRESS};
+    $ENV{'REQUEST_URI'} = "$http->{ADDRESS}?$http->{VARIABLES}";
+    $ENV{'SCRIPT_NAME'} = $http->{ADDRESS};
+    $ENV{'PATH_INFO'} = $http->{ADDRESS};
+    $ENV{'SCRIPT_FILENAME'} = $ENV{'PATH_TRANSLATED'} = "$http->{PARAMS}->{'HTTP_DOC_PATH'}$http->{ADDRESS}";
+    $ENV{'REDIRECT_QUERY_STRING'} = $ENV{'QUERY_STRING'} = $http->{VARIABLES};
+    
+    # throw away phony requests immediately
+    #
+    sysopen(S, "$http->{PARAMS}->{'HTTP_DOC_PATH'}$http->{ADDRESS}", 0) || return(-1);
+    
+    # set our uid if requested
+    nsecmodel($http);
+    
+    if (length($http->{POSTDATA}) > 0)
+    {
+        $PHPCMD = "$http->{POSTDATA} | $PHP";
+    } else
+    {
+        $PHPCMD = "$PHP $http->{PARAMS}->{'HTTP_DOC_PATH'}$http->{ADDRESS}";
+    }
+
+    $PHPBUF="";
+    if(open(PHP, "$PHPCMD |"))
+    {
+        $heads = 0;
+        undef $rc;
+        undef %http_h;
+        while(<PHP>)
+        {
+            unless ($heads)
+            {
+                s/[\r\l\n\s]$//sg;
+                if (/^$/)
+                {
+                    $heads = 1;
+                    if ($rc) 
+                    {
+                        $PHPBUF = $PHPBUF . "$rc\r\n";
+                    } else
+                    {
+                        if (defined($http_h{'Location'}))
+                        {
+                            $PHPBUF = $PHPBUF . "HTTP/1.0 302 Temporary Redirect\r\n";
+                        } else
+                        {
+                            $PHPBUF = $PHPBUF .  "HTTP/1.0 200 OK\r\n";
+                        }
+                    }
+                    $PHPBUF = $PHPBUF .  "Server: $ENV{'SERVER_SOFTWARE'}\r\n";
+                    foreach $e (keys %http_h)
+                    {
+                        $PHPBUF = $PHPBUF . "$e: $http_h{$e}\r\n";
+                    }
+                    $PHPBUF = $PHPBUF .  print "\r\n";
+                } else
+                {
+                    if (m#^HTTP/#)
+                    { # yes, I'm lazy
+                        $rc = $_;
+                    } else {
+                        ($k, $v) = split(/:\s*/, $_);
+                        $k = ucfirst(lc($k));
+                        $http_h{$k} = $v;
+                    }
+                }
+            } else
+            {
+                $PHPBUF = $PHPBUF . $_;
+            }
+        }
+    }
+    close(PHP);
+    print STDOUT $PHPBUF;
+}
+
+# Pseudo function to mimic a page by combining static and dynamic internal components.
+#
+sub httpServePage
+{
+    # Parameters and local variables.
+    #
+    my ($http, $page, $postData, $session) = @_;
+
+    # Acknowledge the request, buys us time to start assembling the HTML response.
+    #
+    htResponse($http, 200, "OK");
+
+    # Clear out the in-memory HTML buffer.
+    #
+    htContent_ClearBuf($http);
+
+    # Login required?
+    #
+    if($page eq "logout" || $page eq "autologout" || !$http->{SESSION}->param("~logged-in"))
+    {
+        $http->{SESSION}->clear(["~logged-in"]);
+		if($page eq "autologout")
+		{
+            $http->{SESSION}->param('login-msg', "Session expired, please re-login!");
+		}
+        htContent_AddExpandBuf($http, "",                    "login.inc",                   "LOGIN",       "LOGIN");
+    }
+
+    # Main Page
+    #
+    elsif($page eq "/" && isAuthorised($http, $ACCESS_LEVEL_ALL))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "dashboard.inc",               "DASHBOARD",   "DASHBOARD");
+    }
+
+    # CONTROL
+    elsif($page eq "control_set_outputs" && isAuthorised($http, $ACCESS_LEVEL_USER))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "control_set_outputs.inc",     "CONTROL",     "SETOUTPUTS");
+    }
+    elsif($page eq "control_read_inputs" && isAuthorised($http, $ACCESS_LEVEL_ALL))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "control_read_inputs.inc",     "CONTROL",     "READINPUTS");
+    }
+
+    # STATUS
+    elsif($page eq "active_ports" && isAuthorised($http, $ACCESS_LEVEL_ALL))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "debug_active_ports.inc",      "STATUS",      "ACTIVEPORTS");
+    }
+    elsif($page eq "all_ports" && isAuthorised($http, $ACCESS_LEVEL_USER))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "debug_all_ports.inc",         "STATUS",      "ALLPORTS");
+    }
+    elsif($page eq "variables" && isAuthorised($http, $ACCESS_LEVEL_USER))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "debug_variables.inc",         "STATUS",      "VARIABLES");
+    }
+    elsif($page eq "devicelog" && isAuthorised($http, $ACCESS_LEVEL_ROOT))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "debug_devicelog.inc",         "STATUS",      "DEVICELOG");
+    }
+    elsif($page eq "webserver" && isAuthorised($http, $ACCESS_LEVEL_ROOT))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "debug_webserver.inc",         "STATUS",      "WEBSERVER");
+    }
+
+    # CONFIG
+    elsif($page eq "config_devices" && isAuthorised($http, $ACCESS_LEVEL_ROOT))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "config_devices.inc",          "CONFIG",      "CONFIGDEVICES");
+    }
+    elsif($page eq "config_ports" && isAuthorised($http, $ACCESS_LEVEL_ADMIN))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "config_ports.inc",            "CONFIG",      "CONFIGPORTS");
+    }
+    elsif($page eq "config_timers" && isAuthorised($http, $ACCESS_LEVEL_ADMIN))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "config_port_timers.inc",      "CONFIG",      "CONFIGTIMERS");
+    }
+    elsif($page eq "config_ping" && isAuthorised($http, $ACCESS_LEVEL_ADMIN))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "config_port_ping.inc",        "CONFIG",      "CONFIGPING");
+    }
+
+    # SETTINGS
+    elsif($page eq "set_ddns"        && isAuthorised($http, $ACCESS_LEVEL_ADMIN))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "settings_ddns.inc",           "SETTINGS",    "DDNS");
+    }
+    elsif($page eq "set_email"       && isAuthorised($http, $ACCESS_LEVEL_ALL))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "settings_email.inc",          "SETTINGS",    "EMAIL");
+    }
+    elsif($page eq "change_password" && isAuthorised($http, $ACCESS_LEVEL_ALL))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "settings_password.inc",       "SETTINGS",    "PASSWORD");
+    }
+    elsif($page eq "change_time"     && isAuthorised($http, $ACCESS_LEVEL_ADMIN))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "settings_time.inc",           "SETTINGS",    "TIME");
+    }
+    elsif($page eq "parameters"      && isAuthorised($http, $ACCESS_LEVEL_ADMIN))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "settings_parameters.inc",     "SETTINGS",    "PARAMETERS");
+    }
+
+    # ADMIN
+    elsif($page eq "logout" && isAuthorised($http, $ACCESS_LEVEL_ALL))
+    {
+        htContent_AddExpandBuf($http, $http->{HTMLMENUTMPL}, "logout.inc",                  "LOGOUT",      "");
+    }
+
+    # Not coded or forbidden, so just show a forbidden message.
+    else
+    {
+        htContent_AddExpandBuf($http, "",                   "forbidden.inc",                "FORBIDDEN",   "FORBIDDEN");
+    }
+
+    # Page has been built, so serve it.
+    #
+    htContent_SendBuf($http, "text/html");
+}
+
+# Function to load into memory the web page menu (and other static settings). This template is customised for every
+# request using in-built MACRO's.
+#
+sub httpLoadMenuTemplate
+{
+    # Local variables.
+    #
+    my ($http) = @_;
+
+    open(HTML_HDL, "<", "$http->{PARAMS}->{'HTTP_DOC_PATH'}/inc/menu.tpl.inc") or die "Cannot open HTML Menu Template:$http->{PARAMS}->{'HTTP_DOC_PATH'}/inc/menu.tpl.inc";
+    $http->{HTMLMENUTMPL}="";
+    while($line=<HTML_HDL>)
+    {
+        $http->{HTMLMENUTMPL} = $http->{HTMLMENUTMPL} . $line;
+    }
+    close(HTML_HDL);
+}
+
+##############################################################
+# END of Internal web-pages.
+##############################################################
+
+# Main HTTP server thread (forked). Deciphers the request, gathers the response
+# and returns it to the caller. The httpServer function only servers one request then dies,
+# relying on the parent process to fork another process.
+#
+sub httpServer
+{
+    # Local variables.
+    #
+    my ($http) = @_;
+    my ($dow) = (undef);
+    my ($postData) = (undef);
+
+    # Change the effective user and group to limit priviledges.
+    #
+    $( = $) = getpwnam($SERVER_USER);
+    $< = $> = getgrnam($SERVER_GROUP);
+
+    # Initial Setup.
+    #
+	$http->{ERRMSG} = "";
+
+    # Indicate what server is doing via ps.
+    #
+    $0 = "$SERVER_DNAME: handling request";
+
+    $date = scalar localtime;
+    ($dow, $mon, $dt, $tm, $yr) = ($date =~ m/(...) (...) (..) (..:..:..) (....)/);
+    $dt += 0;
+    $dt = substr("0$dt", length("0$dt") - 2, 2);
+    $http->{RFCDATE}  = rfctime(scalar gmtime, 1);
+    $http->{DATE}     = "$dt/$mon/$yr:$tm +0000"; 
+
+    # Setup an alarm to avoid lockups and read in all the browser variables.
+    #
+    alarm 10;
+    select(STDOUT); $|=1; $address = 0; 
+    while (<STDIN>)
+    {
+        if(/^([A-Z]+)\s+([^\s]+)\s+([^\s\r\l\n]*)/)
+        {
+            my @values = split(/ /, $_);
+            $http->{METHOD}  = $values[0]; #$1;
+            $http->{ADDRESS} = $values[1]; #$2; 
+            $http->{VERSION} = $values[2]; #$3;
+            $http->{REFERENCE} = '';
+            $http->{USERAGENT}  = '';
+            $http->{VERSION} = ($http->{VERSION} =~ m#HTTP/([0-9]\.[0-9]+)#) ?  ($1) : (0.9);
+            $http->{ADDRESS} =~ s#^http://[^/]+/#/#;
+
+            # Update action of server on ps.
+            #
+            $0 = $execstring = "$SERVER_DNAME: $http->{METHOD} $http->{ADDRESS} $http->{VERSION}";
+
+            # Get next variable set if browser version uses HTTP > 1.0
+            #
+            next unless (0+$http->{VERSION} < 1);
+        } else
+        {
+            s/[\r\l\n\s]+$//;
+            (/^Host:\s+(.+)/i)                  && ($http->{HOST} = substr($1, 0, 255)) && ($http->{HOST} =~ s/:\d+$//);
+            (/^Referer:\s+(.+)/i)               && ($http->{REFERENCE} = substr($1, 0, 1024));
+            (/^User-agent:\s+(.+)/i)            && ($http->{USERAGENT} = substr($1, 0, 1024));
+            (/^Content-length:\s+(\d+)/i)       && ($ENV{'CONTENT_LENGTH'} = $http->{CONTENTLENGTH} = 0+$1);
+            (/^Content-type:\s+(.+)/i)          && ($ENV{'CONTENT_TYPE'} = $http->{CONTENTTYPE} = substr($1, 0, 255));
+            (/^Expect:\s+/)                     && ($http->{EXPECT} = 1);
+            (/^Cookie:\s+(.+)/i)                && ($ENV{'HTTP_COOKIE'} = substr($1, 0, 16384));
+            (/^Authorization:\s+Basic (.+)/i)   && ($http->{AUTHORISATION} = substr($1, 0, 1024));
+            (/^Range:\s+(.+)/i)                 && ($ENV{'CONTENT_RANGE'} = substr($1, 0, 255));
+            (/^If-Modified-Since:\s+(.+)/i)     && ($http->{MODSINCE} = $ENV{'HTTP_IF_MODIFIED_SINCE'} = substr($1, 0, 255));
+            (/^Accept:\s+(.+)/i)                && ($ENV{'HTTP_ACCEPT'} = substr($1, 0, 255));
+            (/^Accept-([a-zA-Z0-9]+):\s+(.+)/i) && ($ENV{'HTTP_ACCEPT_'.uc(substr($1, 0, 16))} = substr($2, 0, 255));
+            (/^X-Requested-With:\s+(.+)/i)      && ($ENV{'HTTP_X_REQUESTED_WITH'} = substr($1, 0, 1024));
+            next unless (/^$/);
+        }
+        last;
+    }
+Utilities::log(0, MODULE, "httpServer", "METHOD=$http->{METHOD},ADDRESS=$http->{ADDRESS},VERSION=$http->{VERSION}");
+
+    # Get hostname, port and ip of connection, store for later use.
+    #
+    ($http->{HOSTNAME}, $http->{PORT}, $http->{IP}) = sock_to_host();
+
+    # Get session data and transmit to client.
+    #
+    $http->{CGI}     = new CGI;
+    $http->{SESSION} = new CGI::Session(undef, $http->{CGI}, {Directory=>'/tmp'});
+    $http->{SESSION}->expire('+1h');
+ 
+    # Setup Cookie.
+    #
+    $http->{COOKIE} = $http->{CGI}->cookie(-name   => 'CGISESSID',
+                                           -value  => $http->{SESSION}->id,
+                                           -expires=>'+1h');
+
+    # Check Session parameters exist, create if necessary.
+    #
+    $http->{SESSION}->param('~logged-in',  0) unless(defined $http->{SESSION}->param('~logged-in'));
+    $http->{SESSION}->param('login-msg',  "") unless(defined $http->{SESSION}->param('login-msg'));
+    $http->{SESSION}->param('setpwd-msg', "");
+    $http->{SESSION}->param('session-msg', "");
+    $http->{SESSION}->param('login-msg',  "Session Expired, please login again!") if($http->{SESSION}->is_expired);
+    $http->{SESSION}->param('forward-url',  "");
+    $http->{SESSION}->param('forward-time',  0);
+
+    if ($http->{EXPECT})
+    {
+        htResponse($http, 417, "Expectation Failed");
+        htError($http, "Expectation Failed", "The server does not support this method.");
+        goto HTTPSERVER_LOGEXIT;
+    }
+    if (!length($http->{ADDRESS}) || (0+$http->{VERSION} > 1 && !$http->{HOST}))
+    {
+        htResponse($http, 400, "Bad Request");
+        htError($http, "Bad Request", "The server cannot understand your request.");
+        goto HTTPSERVER_LOGEXIT;
+    }
+    if ($http->{METHOD} !~ /^(GET|HEAD|POST)$/)
+    {
+        htResponse($http, 501, "Not Implemented (MAIN)");
+        htError($http, "Not Implemented", "Only GET, HEAD and POST are supported.$_");
+        goto HTTPSERVER_LOGEXIT;
+    }
+    if ($http->{HOST})
+    {
+        if( $http->{HOST} ne "$http->{PARAMS}->{'HTTP_SERVER_HOST'}" && 
+            #
+            # Test addresses below, remove for production.
+            #
+            $http->{HOST} ne "localhost" && 
+            $http->{HOST} ne "localhost:$http->{PARAMS}->{HTTP_SERVER_PORT}" && 
+            $http->{HOST} ne "172.16.18.207" && 
+            substr($http->{HOST}, 0, 10) ne "192.168.15" &&
+            substr($http->{HOST}, 0, 10) ne "192.168.137" &&
+            substr($http->{HOST}, 0, 10) ne "192.168.10"
+          )
+        {
+            if ($nameredir{$http->{HOST}})
+            {
+                my $newlocation = "$nameredir{$http->{HOST}}$http->{ADDRESS}";
+                htResponse($http, 301, "Moved Permanently");
+                htHead($http, "Location: $newlocation");
+                htError($http, "Resource Moved Permanently", "This resource has moved <a href = \"$newlocation\">here</a>.");
+            } else
+            {
+                htResponse($http, 404, "Not Found");
+                htError($http, "Not Found", "The page requested in <tt>$http->{ADDRESS}</tt> is not available to your system.");
+            }
+            goto HTTPSERVER_LOGEXIT;
+        }
+    }
+
+    # Check to see if a restriction is in place.
+    #
+    ($http->{ADDRESS}, $http->{VARIABLES}) = split(/\?/, $http->{ADDRESS});
+    $http->{ADDRESS} =~ s/%([0-9a-fA-F]{2})/pack("H2", $1)/eg;
+    $http->{ADDRESS} =~ s#^/?#/#;
+    1 while $http->{ADDRESS} =~ s#/\.(/|$)#$1#;
+    1 while $http->{ADDRESS} =~ s#/[^/]*/\.\.(/|$)#$1#;
+    1 while $http->{ADDRESS} =~ s#^/\.\.(/|$)#$1#;
+    my $fail = 0;
+    J: foreach(sort { length $a <=> length $b } keys %restrictions)
+    {
+        next if ($http->{ADDRESS} !~ /^$_/);
+        my ($allowip, $denyip, $allowua, $denyua, $auser) = split(/#/, $restrictions{$_});
+        if ($allowip || $denyip)
+        {
+            ($allowip && $ip !~ /$allowip/) && ($fail = 1, last J);
+            ($denyip && $ip =~ /$denyip/)   && ($fail = 1, last J);
+        }
+        ($allowua && $http->{USERAGENT} !~ /$allowua/) && ($fail = 2, last J);
+        ($denyua && $http->{USERAGENT} =~ /$denyua/)   && ($fail = 2, last J);
+    }
+
+    # If restricted, put up forbidden page.
+    #
+    if ($fail)
+    {
+        htResponse($http, 403, "Forbidden");
+        if ($fail == 1)
+        {
+            htError($http, "Forbidden (Client Disallowed)", <<"EOF");
+Your network address (<i>$http->{IP}</i>) is not allowed to access this resource.
+EOF
+        } else
+        {
+            htError($http, "Forbidden (Browser Disallowed)", <<"EOF");
+The browser you are using (<i>$http->{USERAGENT}</i>) is not capable of or
+is not allowed access to this resource.
+EOF
+        }
+        goto HTTPSERVER_LOGEXIT;
+    }
+
+    # Disable alarm, we got here without too much delay, no lockups.
+    #
+    alarm 0;
+
+    # Update statistics.
+    #
+    $http->{STATIOSLASTSEC} = 1 if ($http->{STATIOSLTR} ne (scalar localtime)); # kludge
+
+    # Post methods, read data.
+    #
+    if($http->{METHOD} eq 'POST')
+    {
+        read(STDIN, $http->{POSTDATA}, $ENV{'CONTENT_LENGTH'});
+Utilities::log(0, MODULE, "READPOST", "POST RAW=>$http->{POSTDATA},$ENV{'CONTENT_LENGTH'}");
+        processPOST_Data($http);
+    }
+
+    # PHP support. Will exit thread if php exists and execution completed.
+    #
+    if ($http->{ADDRESS} =~ /\.php$/i)
+    {
+        # Launch the PHP interpreter inside this thread.
+        #
+        if(executePHP($http) == -1)
+        { 
+           htResponse($http, 404, "Not Found");
+           htError($http, "Not Found", "The PHP resource in <tt>$http->{ADDRESS}</tt> was not found on this system.");
+           goto HTTPSERVER_LOGEXIT;
+       }
+       goto HTTPSERVER_EXIT;
+    }
+
+    # Primary address (ie. /) or a system page?
+    #
+    if($http->{ADDRESS} eq '/' || $http->{ADDRESS} eq '/getpage')
+    {
+        httpServePage($http, $http->{ADDRESS} eq "/" ? "/" : "$http->{VARIABLES}");
+        goto HTTPSERVER_EXIT;
+    }
+
+    # Resource request, so determine required parameters and serve the static file or dynamic executable.
+    #
+    $raddress = "$http->{PARAMS}->{'HTTP_DOC_PATH'}$http->{ADDRESS}";
+    1 while ($raddress =~ s#//#/#);
+    if ($http->{ADDRESS} !~ m#/$# && -d $raddress)
+    {
+        my $newlocation = "http://$http->{PARAMS}->{'HTTP_SERVER_HOST'}:$http->{PARAMS}->{'HTTP_SERVER_PORT'}$http->{ADDRESS}/";
+        htResponse($http, 301, "Moved Permanently");
+        htHead($http, "Location: $newlocation");
+        htError($http, "Resource Moved Permanently", "This resource has moved <a href = \"$newlocation\">here</a>.");
+        goto HTTPSERVER_LOGEXIT;
+    }
+
+    # Disabled - We serve from internal cache.
+    #
+    #$raddress = (-r "${raddress}index.shtml") ? "${raddress}index.shtml" : "${raddress}index.html" if (-d $raddress);
+
+    #($hostname, $port, $ip) = &sock_to_host();
+    if(!sysopen(S, $raddress, 0))
+    {
+        htResponse($http, 404, "Not Found");
+        htError($http, "Not Found", "The requested resource <tt>$raddress</tt> was not found on this system.");
+        goto HTTPSERVER_LOGEXIT;
+    } else
+    {
+        if ((-x $raddress))
+        {
+            $http->{CURRENTCODE}    = 100; nsecmodel($http);
+            $ENV{'REQUEST_METHOD'}  = $http->{METHOD};
+            $ENV{'SERVER_NAME'}     = "$http->{PARAMS}->{'HTTP_SERVER_HOST'}";
+            $ENV{'SERVER_PROTOCOL'} = "HTTP/$http->{VERSION}";
+            $ENV{'SERVER_SOFTWARE'} = "$SERVER_NAME/$PROGRAMVERSION";
+            $ENV{'SERVER_PORT'}     = "$http->{PARAMS}->{'HTTP_SERVER_PORT'}";
+            $ENV{'SERVER_URL'}      = "http://$http->{PARAMS}->{'HTTP_SERVER_HOST'}:$http->{PARAMS}->{'HTTP_SERVER_PORT'}/";
+            $ENV{'SCRIPT_FILENAME'} = $raddress;
+            $ENV{'SCRIPT_NAME'}     = $http->{ADDRESS};
+            $ENV{'REMOTE_HOST'}     = $http->{HOSTNAME};
+            $ENV{'REMOTE_ADDR'}     = $http->{IP};
+            $ENV{'REMOTE_PORT'}     = $http->{PORT};
+            $ENV{'QUERY_STRING'}    = $http->{VARIABLES};
+            $ENV{'HTTP_USER_AGENT'} = $http->{USERAGENT};
+            $ENV{'HTTP_REFERER'}    = $http->{REFERENCE};
+
+            # Launch the request in a child.
+            #
+            my $thread = threads->new( { 'exit' => 'thread_only' }, sub { require $raddress; } );
+            $thread->detach();
+        } else
+        {
+            ($x,$x,$x,$x,$x,$x,$x,$length,$x,$mtime) = stat(S);
+            $http->{CONTENTTYPE} = 0;
+            foreach(keys %content_types)
+            {
+                if ($raddress =~ /\.$_$/i)
+                {
+                    $http->{CONTENTTYPE} = $content_types{$_};
+                }
+            }
+            $mtime = rfctime($mtime);
+            if ($mtime eq $http->{MODSINCE})
+            {
+                htResponse($http, 304, "Not Modified");
+                htHead($http, "Last-Modified: $mtime", 1);
+                goto HTTPSERVER_LOGEXIT;
+            }
+            $http->{CONTENTTYPE} ||= 'text/plain';
+
+            my $thread = threads->new( { 'exit' => 'thread_only' },
+                sub
+                {
+                    $http->{CONTENTLENGTH} ||= $length;
+                    htResponse($http, 200, "OK");
+                    htHead($http, "Last-Modified: $mtime");
+                    htContent($http, "", $http->{CONTENTTYPE}, $length);
+                    nsecmodel($http);
+                    $bytecount = 0;
+                    unless ($http->{METHOD} eq 'HEAD')
+                    {
+                        while(!eof(S))
+                        {
+                            read(S, $q, 32768);
+                            print STDOUT $q;
+                            $bytecount += 32768;
+                            $0 = $execstring .  " ($bytecount bytes sent)";
+                        }
+                    }
+                    alarm 0;
+                    close(S);
+                });
+            $thread->detach();
+        }
+    }
+
+HTTPSERVER_LOGEXIT:
+    httpLog($http);
+
+HTTPSERVER_EXIT:
+    close(S);
+    if(defined $http->{SESSION}) { $http->{SESSION}->flush(); undef $http->{SESSION}; }
+    if(defined $http->{CGI}) { undef $http->{CGI}; }
+}
+
+sub nsecmodel
+{
+    ($http) = @_;
+    httpLog($http);
+    ($x1,$x2,$x3,$x4,$uid,$gid) = stat(S);
+    (!$uid || !$gid) &&
+        die "resource is root-owned, secured or not statable ($uid, $gid, $x1, $x2, $x3, $x4)\n";
+    if (!$<)
+    {
+        ($) = "$gid $gid") || die "can't set egid to $gid";
+        ($> = $uid) || die "can't set euid to $uid";
+#($( = "$gid $gid") || die "can't set rgid to $gid";
+        ($< = $uid) || die "can't set ruid to $uid";
+    }
+}
+
+sub rfctime
+{
+    my $mtime = shift;
+    $mtime = (scalar gmtime $mtime) if (!(shift));
+    my ($dow, $mon, $dt, $tm, $yr) = ($mtime =~ m/(...) (...) (..) (..:..:..) (....)/);
+    $dt += 0; $yr += 0;
+    return "$dow, $dt $mon $yr $tm GMT";
+}
+
+# Function to return reponse when an error occurs, typically an explanation and a copyright
+# banner.
+#
+sub htError
+{
+    my($http, $errstr, @expl) = (@_);
+    &htContent($http, <<"EOF", "text/html", "");
+<html>
+<body>
+<h1>$errstr</h1>
+@expl
+<hr>
+(C) Philip Smart, version $PROGRAMVERSION
+</body>
+</html>
+EOF
+}
+
+# Function to read in the config parameters which govern program actions.
+#
+sub loadParams
+{
+    my $activeset      = 0;
+	my $configblock    = 0;
+	my $linecnt        = 0;
+    my $targetsystem   = 'UNDEFINED';
+    my $targetboard    = 'UNDEFINED';
+	my $targetproduct  = 'ÚNDEFINED';
+	my $system         = undef;
+    my $board          = undef;
+	my $product        = undef;
+
+    # Open working configuration file, if not found, use default file.
+    #
+    unless (open(PARAM_HDL, "<", "${PARAMFILE}"))
+    {
+        open(PARAM_HDL, "<", "${PARAMFILEDEFAULT}") or die "Cannot open parameters file:${PARAMFILEDEFAULT}";
+        printf "WARNING: Using in-built default configuration as no config file found.\n";
+    }
+        
+    while($line=<PARAM_HDL>)
+    {
+		# Increment numerical line position, used for error messages.
+        #
+		$linecnt++;
+
+        # Skip blank lines and comments.
+        #
+        next if(Utilities::atrim($line) eq "" || substr(Utilities::atrim($line), 0, 1) eq '#');
+
+		# Target parameters set?
+        #
+        if(substr($line, 0, 6) eq 'SYSTEM')   { $targetsystem=Utilities::atrim(substr($line, 7)); next; }
+        if(substr($line, 0, 5) eq 'BOARD')    { $targetboard=Utilities::atrim(substr($line, 6)); next; }
+        if(substr($line, 0, 7) eq 'PRODUCT')  { $targetproduct=Utilities::atrim(substr($line, 8)); next; }
+
+		# Config Block?
+		#
+        if(substr(Utilities::atrim($line), 0, 6) eq 'CONFIG')
+        {
+			# Check that config file is setup correctly.
+            #
+            die "Line $linecnt: CONFIG block encountered but SYSTEM not found" if($targetsystem eq 'UNDEFINED');
+            die "Line $linecnt: CONFIG block encountered but BOARD not found" if($targetboard eq 'UNDEFINED');
+            die "Line $linecnt: CONFIG block encountered but PRODUCT not found" if($targetproduct eq 'UNDEFINED');
+
+            # Get the System, Board and Product for this block.
+            #
+			($system, $board, $product) = split(/\./, Utilities::atrim( substr(Utilities::atrim($line), 7) ));
+
+		    if($system eq "" || !defined($system) || $board eq "" || !defined($board) || $product eq "" || !defined($product))
+			{
+                die "Line $linecnt: CONFIG block not valid, should be <SYSTEM>.<BOARD>.<PRODUCT> in params file";
+			}
+
+			if($system eq $targetsystem && $board eq $targetboard && $product eq $targetproduct)
+			{
+                $PARAMS{'SYSTEM'}   = $targetsystem;
+                $PARAMS{'BOARD'}    = $targetboard;
+                $PARAMS{'PRODUCT'}  = $targetproduct;
+                $activeset = 1;
+			} else
+			{
+                $CONFIGFILE{"$system\.$board\.$product"}{'SYSTEM'}   = $system;
+                $CONFIGFILE{"$system\.$board\.$product"}{'BOARD'}    = $board;
+                $CONFIGFILE{"$system\.$board\.$product"}{'PRODUCT'}  = $product;
+			}
+
+			$configblock=1;
+			next;
+        }
+
+        # End of Config Block?
+		#
+        if(Utilities::atrim($line) eq "ENDCONFIG")
+		{
+            # Work out maximum number of user accounts in this config block.
+            #
+            my $valid  = "";
+            my $maxuser= 0;
+            while(defined $valid)
+            {
+				$dynstr  = "if(\$activeset) { \$valid = \${PARAMS{LOGIN_USER_${maxuser}}}; } else { \$valid = \$CONFIGFILE{\"$system\.$board\.$product\"}{LOGIN_USER_${maxuser}} };"; eval $dynstr;
+                if(defined $valid) { $maxuser++; }
+            }
+			if($activeset) { $PARAMS{MAXUSER} = $maxuser; } else { $CONFIGFILE{"$system\.$board\.$product"}{MAXUSER} = $maxuser; }
+			$activeset = 0; $configblock = 0; $system = undef; $board = undef; $product = undef;
+			next;
+		}
+
+        # Loop if we are not in a config block.
+		#
+		next if($configblock == 0);
+
+        my ($key, $value) = split(/=/, $line);
+        $value =~ s/"//g;
+		$key   = Utilities::atrim($key);
+		$value = Utilities::atrim($value);
+
+		# If this is not the active block, store values in internal hash in case we need to regenerate the config file.
+        #
+		if($activeset == 0)
+		{
+			$CONFIGFILE{"$system\.$board\.$product"}{$key} = $value;
+        } else
+		{
+            $PARAMS{$key} = $value;
+            #Utilities::log(0, MODULE, "TEST", "$key:$value,\$PARAMS{Utilities::atrim($key)} = Utilities::atrim($value)");
+		}
+    }
+
+    close(PARAM_HDL);
+    die "No parameters relevant to current configuration in params file" unless %PARAMS ne {};
+}
+
+# Function to format the User Login parameters for outputting into the configuration file.
+#
+sub formatUserConfig
+{
+    my ($handle, $cfgset, $paramprefix, $paramname, $paramno, $isString, $width) = @_;
+    my ($dynstr, $value, $param, $format_string) = ("", "", "", "");
+
+    # Build the parameter name.
+    #
+    $param = "${paramprefix}_${paramname}_${paramno}";
+
+    # Get the value.
+    #
+    $dynstr  = "\$value = \$cfgset->{$param};"; eval $dynstr;
+
+    # Add necessary formatting to output.
+    #
+    if($isString == 0)
+    {
+        $format_string = sprintf("    %-*s = $value\n", $width, $param);
+    } else
+    {
+        $format_string = sprintf("    %-*s = \"$value\"\n", $width, $param);
+    }
+    printf $handle $format_string;
+}
+
+# Function to format the Device parameters for outputting into the configuration file.
+#
+sub formatDeviceConfig
+{
+    my ($handle, $cfgset, $paramprefix, $paramname, $paramno, $isString, $width) = @_;
+    my ($r, $dynstr, $value, $param, $format_string) = (0, "", "", "", "");
+
+    # Build the parameter name.
+    #
+    $param = "${paramprefix}_${paramno}_${paramname}";
+
+    # Get the value.
+    #
+	if(exists $cfgset->{ACTIVE})
+	{
+        $dynstr  = "(\$r, \$value) = $cfgset->{BOARD}::GetDeviceConfig($paramno, \"${paramprefix}_${paramname}\");";
+	} else
+	{
+        $dynstr  = "\$value = \$cfgset->{$param};";
+    }
+	eval $dynstr;
+
+    # Add necessary formatting to output.
+    #
+    if($isString == 0)
+    {
+        $format_string = sprintf("    %-*s = $value\n", $width, $param);
+    } else
+    {
+        $format_string = sprintf("    %-*s = \"$value\"\n", $width, $param);
+    }
+    printf $handle $format_string;
+}
+
+# Function to format the Port parameters for outputting into the configuration file.
+#
+sub formatPortConfig
+{
+    my ($handle, $cfgset, $paramprefix, $paramname, $paramno, $isString, $width) = @_;
+    my ($r, $dynstr, $value, $param, $format_string) = (0, "", "", "", "");
+
+    # Build the parameter name.
+    #
+    $param = "${paramprefix}_${paramno}_${paramname}";
+
+    # Get the value - active set take running values otherwise use config file values.
+    #
+	if(exists $cfgset->{ACTIVE})
+	{
+        eval "(\$r, \$value) = $cfgset->{BOARD}::GetPortConfig($paramno, \"${paramprefix}_${paramname}\");";
+	} else
+	{
+		if(exists $cfgset->{$param})
+		{
+            $value = $cfgset->{$param};
+		}
+		else
+		{
+			$value = "";
+		}
+    }
+
+    # Add necessary formatting to output.
+    #
+    if($isString == 0)
+    {
+        $format_string = sprintf("    %-*s = $value\n", $width, $param);
+    } else
+    {
+        $format_string = sprintf("    %-*s = \"$value\"\n", $width, $param);
+    }
+    printf $handle $format_string;
+}
+
+# Function to write out the parameters in case of restart. Only called on parameter change.
+#
+sub writeParams
+{
+    my $useblock = 0;
+
+    # Create a new file to write out the config parameters into.
+    #
+    open(PARAM_HDL, ">", "${PARAMFILEDIR}/${PARAMFILEBASE}${PARAMFILEEXT}.new")
+      or die "Cannot create parameters update file:${PARAMFILEDIR}/${PARAMFILEBASE}${PARAMFILEEXT}.new";
+
+    printf PARAM_HDL "##############################################################################################################\n";
+    printf PARAM_HDL "# CONFIGURATION FILE FOR THE DIGITAL POWER CONTROLLER APPLICATION (DPWR)\n";
+    printf PARAM_HDL "#\n";
+    printf PARAM_HDL "# CAUTION: Any additional comments added by user will be lost if this file is re-generated by the DPWR app.\n";
+    printf PARAM_HDL "##############################################################################################################\n";
+    printf PARAM_HDL "\n";
+    printf PARAM_HDL "#\n# Operating System DPWR is running on.\n#\n";
+    printf PARAM_HDL "SYSTEM  ${PARAMS{SYSTEM}}\n";
+    printf PARAM_HDL "\n";
+    printf PARAM_HDL "#\n# I/O Board DPWR should use.\n#\n";
+    printf PARAM_HDL "BOARD   ${PARAMS{BOARD}}\n";
+    printf PARAM_HDL "\n";
+    printf PARAM_HDL "#\n# Product configuration to use.\n#\n";
+    printf PARAM_HDL "PRODUCT ${PARAMS{PRODUCT}}\n";
+    printf PARAM_HDL "\n";
+    printf PARAM_HDL "###########################################################################################################\n";
+    printf PARAM_HDL "# Configuration block for ${PARAMS{BOARD}} I/O board.\n";
+    printf PARAM_HDL "###########################################################################################################\n";
+    printf PARAM_HDL "# PARAMETER                       DESCRIPTION #\n";
+    printf PARAM_HDL "# ---------                       ----------- #\n";
+    printf PARAM_HDL "# HTTP_SERVER_HOST              = IP address of the internal HTTP server.\n";
+    printf PARAM_HDL "# HTTP_SERVER_PORT              = PORT of the internal HTTP server.\n";
+    printf PARAM_HDL "# HTTP_DOC_PATH                 = Local path containing HTML documents to be served to web browsers.\n";
+    printf PARAM_HDL "# HTTP_LOGFILE                  = Log file of all HTTP server actions.\n";
+    printf PARAM_HDL "# HTTP_PASSWORD                 = Password for protected HTTP server pages.\n";
+    printf PARAM_HDL "# HTTP_MAX_RETRIES              = Not currently used.\n";
+    printf PARAM_HDL "# HTTP_SESSION_TIMEOUT          = Inactivity timer in seconds before user is logged out.\n";
+    printf PARAM_HDL "# TITLE                         = Name or Title of configuration.\n";
+    printf PARAM_HDL "# LOGFILE                       = Log file for all DPWR program actions.\n";
+    printf PARAM_HDL "#\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# USER Specific Configuration\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# LOGIN_USER_<0..n>             = Id of a User who can access the web interace.\n";
+    printf PARAM_HDL "# LOGIN_PASSWORD_<0..n>         = Password of above User Id, leave blank for no password.\n";
+    printf PARAM_HDL "# LOGIN_LEVEL_<0..n>            = Authorisation level, 1=All, 1=Operator, 2=Admin, 3=Root.\n";
+    printf PARAM_HDL "#\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# EMAIL Specific Configuration\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# EMAIL_SMTP_OR_POP3            = Use SMTP, POP3 or NO email service.\n";
+    printf PARAM_HDL "# EMAIL_USE_AUTHENTICATION      = Connection with SMTP or POP3 service requires authentication.\n";
+    printf PARAM_HDL "# EMAIL_SMTP_SERVER_IP          = IP or hostname of an smtp server through which to send emails.\n";
+    printf PARAM_HDL "# EMAIL_SMTP_SERVER_PORT        = Port on which the smtp server listens.\n";
+    printf PARAM_HDL "# EMAIL_POP3_SERVER_IP          = IP or hostname of a POP3 server through which to send emails.\n";
+    printf PARAM_HDL "# EMAIL_POP3_SERVER_PORT        = Port on which the POP3 server listens.\n";
+    printf PARAM_HDL "# EMAIL_USERNAME                = Username for SMTP gateway or POP3 server.\n";
+    printf PARAM_HDL "# EMAIL_PASSWORD                = Password for SMTP gateway or POP3 server.\n";
+    printf PARAM_HDL "# EMAIL_SENDER                  = Sender (from:) of the email.\n";
+    printf PARAM_HDL "# EMAIL_RECIPIENT1              = Recipient (to:) of the email.\n";
+    printf PARAM_HDL "# EMAIL_RECIPIENT2              = Recipient (to:) of the email.\n";
+    printf PARAM_HDL "# EMAIL_RECIPIENT3              = Recipient (to:) of the email.\n";
+    printf PARAM_HDL "# EMAIL_SUBJECT                 = Subject of the email, overrides in-built default.\n";
+    printf PARAM_HDL "# EMAIL_MAILBODY                = Contents of the email, overrides in-built default.\n";
+    printf PARAM_HDL "#\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# DDNS Configuration\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# DDNS_ENABLE                   = Enable/Disable the DDNS configuration service.\n";
+    printf PARAM_HDL "# DDNS_SERVER_IP                = IP or hostname of DDNS server.\n";
+    printf PARAM_HDL "# DDNS_CLIENT_DOMAIN            = Domain name of the client, ie the one to setup the IP against.\n";
+    printf PARAM_HDL "# DDNS_CLIENT_USERNAME          = Username on the Server for this client.\n";
+    printf PARAM_HDL "# DDNS_CLIENT_PASSWORD          = Password for the above client on the Server.\n";
+    printf PARAM_HDL "# DDNS_PROXY_ENABLE             = Enable/Disable the Proxy through which we connect to the server.\n";
+    printf PARAM_HDL "# DDNS_PROXY_IP                 = IP Address of the Proxy Server.\n";
+    printf PARAM_HDL "# DDNS_PROXY_PORT               = Port on which the Proxy Server listens.\n";
+    printf PARAM_HDL "#\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# TIME Configuration\n";
+    printf PARAM_HDL "# ##############################\n";
+    printf PARAM_HDL "# TIME_LOCAL_OR_NTP             = Use local set time or an NTP server.\n";
+    printf PARAM_HDL "# TIME_NTP_SERVER_IP            = IP or hostname of NTP server.\n";
+    printf PARAM_HDL "# TIME_NTP_TIMEZONE_ID          = Time Zone Id.\n";
+    printf PARAM_HDL "# TIME_NTP_TIMEZONE_DST         = Daylight Savings Time applies (1), does not apply (0).\n";
+    printf PARAM_HDL "# TIME_NTP_TIMEZONE_OFFSET      = Time Zone offset from GMT.\n";
+    printf PARAM_HDL "#\n";
+    printf PARAM_HDL "# #############################\n";
+    printf PARAM_HDL "# DEVICE Specific Configuration\n";
+    printf PARAM_HDL "# #############################\n";
+    printf PARAM_HDL "# DEVICE_ENABLED                = Device is ENABLED or DISABLED.\n";
+    printf PARAM_HDL "# DEVICE_TYPE                   = Device controller for block: ATMEGA328P, TCA6416A.\n";
+    printf PARAM_HDL "# DEVICE_NAME                   = Name associated with this device.\n";
+    printf PARAM_HDL "# DEVICE_DESCRIPTION            = Description of device purpose.\n";
+    printf PARAM_HDL "# DEVICE_PORT_MIN               = Minimum Port Number assigned to this device.\n";
+    printf PARAM_HDL "# DEVICE_PORT_MAX               = Maximum Port Number assigned to this device.\n";
+    printf PARAM_HDL "# DEVICE_BASE_ADDR              = Base address for direct addressable devices, ie. TCA6416A\n";
+    printf PARAM_HDL "# DEVICE_UART                   = Serial device (ie. /dev/ttyACM99) to which the ATMega328P is connected.\n";
+    printf PARAM_HDL "# DEVICE_UART_BAUD              = Baud rate used by the ATMega328P.\n";
+    printf PARAM_HDL "# DEVICE_UART_DATABITS          = Number of databits used by the ATMega328P.\n";
+    printf PARAM_HDL "# DEVICE_UART_PARITY            = Number of parity bits used by the ATMega328P.\n";
+    printf PARAM_HDL "# DEVICE_UART_STOPBITS          = Number of stopbits used by the ATMega328P.\n";
+    printf PARAM_HDL "#\n";
+    printf PARAM_HDL "#############################\n";
+    printf PARAM_HDL "# Port Specific Configuration\n";
+    printf PARAM_HDL "#############################\n";
+    printf PARAM_HDL "# PORT_ENABLED                  = Enable I/O port: DISABLED or ENABLD\n";
+    printf PARAM_HDL "# PORT_NAME                     = Name associated with the I/O Port\n"; 
+    printf PARAM_HDL "# PORT_DESCRIPTION              = Description of I/O Port purpose.\n";
+    printf PARAM_HDL "# PORT_LOCKED                   = Factory locked (not changeable): LOCKED or UNLOCKED\n";
+    printf PARAM_HDL "# PORT_MODE                     = Configure I/O port: OUTPUT or INPUT\n";
+    printf PARAM_HDL "# PORT_POWERUPSTATE             = Set output port level to this state at Power Up: LOW or HIGH.\n";
+    printf PARAM_HDL "# PORT_POWERDOWNSTATE           = Set output port level to this state at Power Down: LOW or HIGH.\n";
+    printf PARAM_HDL "# PORT_ON_STATE_VALUE           = Level which is active for this port: LOW or HIGH.\n";
+    printf PARAM_HDL "# PORT_OFF_STATE_VALUE          = Level which is inactive for this port: LOW or HIGH.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_0                = 'HH:MM:SS comma seperated DOW list' - set port active at this time.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_0               = 'HH:MM:SS comma seperated DOW list' - set port inactive at this time.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_0         = ON TIME #0: DISABLED or ENABLD\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_0        = OFF TIME #0: DISABLED or ENABLED\n";
+    printf PARAM_HDL "# PORT_ON_TIME_1                = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_1               = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_1         = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_1        = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_2                = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_2               = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_2         = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_2        = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_3                = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_3               = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_3         = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_3        = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_4                = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_4               = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_4         = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_4        = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_5                = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_5               = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_5         = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_5        = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_6                = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_6               = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_6         = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_6        = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_7                = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_7               = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_ON_TIME_ENABLE_7         = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_OFF_TIME_ENABLE_7        = as TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_ENABLE_0            = PING #0 mechanism: DISABLED or ENABLED. (Ping an address and take an action.)\n";
+    printf PARAM_HDL "# PORT_PING_ENABLE_1            = PING #1 mechanism: DISABLED or ENABLED. (Ping an address and take an action.)\n";
+    printf PARAM_HDL "# PORT_PING_ENABLE_2            = PING #2 mechanism: DISABLED or ENABLED. (Ping an address and take an action.)\n";
+    printf PARAM_HDL "# PORT_PING_ENABLE_3            = PING #3 mechanism: DISABLED or ENABLED. (Ping an address and take an action.)\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_0              = IP or FQDN to ping in order to see if destination is alive.\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_1              = as ADDR 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_2              = as ADDR 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_3              = as ADDR 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_TYPE_0              = Type of PING to use, ie. ICMP, TCP or UDP.\n";
+    printf PARAM_HDL "# PORT_PING_TYPE_1              = as TYPE 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_TYPE_2              = as TYPE 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_TYPE_3              = as TYPE 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_WAIT_TIME_0    = Period, in seconds, to wait for a ping response from destination.\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_WAIT_TIME_1    = as WAIT TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_WAIT_TIME_2    = as WAIT TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_ADDR_WAIT_TIME_3    = as WAIT TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_TO_PING_TIME_0      = Period, in seconds, between successive ping operations.\n";
+    printf PARAM_HDL "# PORT_PING_TO_PING_TIME_1      = as PING TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_TO_PING_TIME_2      = as PING TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_TO_PING_TIME_3      = as PING TIME 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_FAIL_COUNT_0        = Number of ping failures before a PING ACTION ON FAIL occurs.\n";
+    printf PARAM_HDL "# PORT_PING_FAIL_COUNT_1        = as FAIL COUNT 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_FAIL_COUNT_2        = as FAIL COUNT 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_FAIL_COUNT_3        = as FAIL COUNT 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_SUCCESS_COUNT_0     = Number of ping success responses before a PING ACTION ON SUCCESS occurs.\n";
+    printf PARAM_HDL "# PORT_PING_SUCCESS_COUNT_1     = as SUCCESS COUNT 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_SUCCESS_COUNT_2     = as SUCCESS COUNT 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_SUCCESS_COUNT_3     = as SUCCESS COUNT 0 above.\n";
+    printf PARAM_HDL "# PORT_PING_LOGIC_FOR_FAIL      = Logic operator between Ping #0 and #1 before a PING ACTION occurs for FAIL Count: OR or AND.\n";
+    printf PARAM_HDL "# PORT_PING_LOGIC_FOR_SUCCESS   = Logic operator between Ping #0 and #1 before 1 PING ACTION occurs for SUCCESS Count: OR or AND.\n";
+    printf PARAM_HDL "# PORT_PING_ACTION_ON_FAIL      = NONE|OFF|ON|CYCLEON|CYCLEOFF\n";
+    printf PARAM_HDL "#                                 ^- Take no action.\n";
+    printf PARAM_HDL "#                                      ^- Set port output inactive.\n";
+    printf PARAM_HDL "#                                          ^- Set port output active.\n";
+    printf PARAM_HDL "#                                             ^- Set port output active, wait ACTION PAUSE TIME, set port inactive.\n";
+    printf PARAM_HDL "#                                                     ^- Set port output inactive, wait ACTION PAUSE TIME, set port active.\n";
+    printf PARAM_HDL "# PORT_PING_ACTION_ON_SUCCESS   = as ON FAIL above.\n";
+    printf PARAM_HDL "# PORT_PING_ACTION_SUCCESS_TIME = Period, in seconds, used in cycleon/cycleoff above for success action.\n";
+    printf PARAM_HDL "# PORT_PING_ACTION_FAIL_TIME    = Period, in seconds, used in cycleon/cycleoff above for fail action.\n";
+    printf PARAM_HDL "# PORT_RESET_TIME               = Not used.\n";
+    printf PARAM_HDL "###########################################################################################################\n";
+
+    # Copy current parameter set into CONFIGDATA set (only interested in none I/O values, I/O values are taken from module), then write out the data.
+    #
+	my $cfgkey = "${PARAMS{SYSTEM}}\.${PARAMS{BOARD}}\.${PARAMS{PRODUCT}}";
+    foreach my $key (keys %PARAMS)
+	{
+        $CONFIGFILE{$cfgkey}{$key} = $PARAMS{$key};
+	}
+    $CONFIGFILE{$cfgkey}{ACTIVE} = 1;
+
+	foreach my $cfgset (keys %CONFIGFILE)
+	{
+        my ($system, $board, $product) = split(/\./, $cfgset);
+
+        printf PARAM_HDL "#\n";
+        printf PARAM_HDL "CONFIG $system.$board.$product\n";
+        printf PARAM_HDL "    #\n    # HTTP Server configuration parameters.\n    #\n";
+        printf PARAM_HDL "    HTTP_SERVER_HOST                    = \"${CONFIGFILE{$cfgset}{HTTP_SERVER_HOST}}\"\n";
+        printf PARAM_HDL "    HTTP_SERVER_PORT                    = ${CONFIGFILE{$cfgset}{HTTP_SERVER_PORT}}\n";
+        printf PARAM_HDL "    HTTP_DOC_PATH                       = \"${CONFIGFILE{$cfgset}{HTTP_DOC_PATH}}\"\n";
+        printf PARAM_HDL "    HTTP_LOGFILE                        = \"${CONFIGFILE{$cfgset}{HTTP_LOGFILE}}\"\n";
+        printf PARAM_HDL "    HTTP_PASSWORD                       = \"${CONFIGFILE{$cfgset}{HTTP_PASSWORD}}\"\n";
+        printf PARAM_HDL "    HTTP_MAX_RETRIES                    = ${CONFIGFILE{$cfgset}{HTTP_MAX_RETRIES}}\n";
+        printf PARAM_HDL "    HTTP_SESSION_TIMEOUT                = ${CONFIGFILE{$cfgset}{HTTP_SESSION_TIMEOUT}}\n";
+        printf PARAM_HDL "    #\n    # Name appearing on main GUI screen.\n    #\n";
+        printf PARAM_HDL "    TITLE                               = \"${CONFIGFILE{$cfgset}{TITLE}}\"\n";
+        printf PARAM_HDL "    #\n    # Primary DPWR log file.\n    #\n";
+        printf PARAM_HDL "    LOGFILE                             = \"${CONFIGFILE{$cfgset}{LOGFILE}}\"\n";
+
+        # Write out each user record.
+        #
+        for(my $udx=0; $udx < $CONFIGFILE{$cfgset}{MAXUSER}; $udx++)
+        {
+            printf PARAM_HDL "    #\n    # Login User definition.\n    #\n";
+            formatUserConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "LOGIN",   "USER",                      $udx, 1, 35);
+            formatUserConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "LOGIN",   "PASSWORD",                  $udx, 1, 35);
+            formatUserConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "LOGIN",   "LEVEL",                     $udx, 0, 35);
+        }
+
+        # Write out the Email information.
+        #
+        printf PARAM_HDL "    #\n    # Email notification configuration.\n    #\n";
+        printf PARAM_HDL "    EMAIL_SMTP_OR_POP3                  = \"${CONFIGFILE{$cfgset}{EMAIL_SMTP_OR_POP3}}\"\n";
+        printf PARAM_HDL "    EMAIL_USE_AUTHENTICATION            = \"${CONFIGFILE{$cfgset}{EMAIL_USE_AUTHENTICATION}}\"\n";
+        printf PARAM_HDL "    EMAIL_SMTP_SERVER_IP                = \"${CONFIGFILE{$cfgset}{EMAIL_SMTP_SERVER_IP}}\"\n";
+        printf PARAM_HDL "    EMAIL_SMTP_SERVER_PORT              = ${CONFIGFILE{$cfgset}{EMAIL_SMTP_SERVER_PORT}}\n";
+        printf PARAM_HDL "    EMAIL_POP3_SERVER_IP                = \"${CONFIGFILE{$cfgset}{EMAIL_POP3_SERVER_IP}}\"\n";
+        printf PARAM_HDL "    EMAIL_POP3_SERVER_PORT              = ${CONFIGFILE{$cfgset}{EMAIL_POP3_SERVER_PORT}}\n";
+        printf PARAM_HDL "    EMAIL_USERNAME                      = \"${CONFIGFILE{$cfgset}{EMAIL_USERNAME}}\"\n";
+        printf PARAM_HDL "    EMAIL_PASSWORD                      = \"${CONFIGFILE{$cfgset}{EMAIL_PASSWORD}}\"\n";
+        printf PARAM_HDL "    EMAIL_SENDER                        = \"${CONFIGFILE{$cfgset}{EMAIL_SENDER}}\"\n";
+        printf PARAM_HDL "    EMAIL_RECIPIENT1                    = \"${CONFIGFILE{$cfgset}{EMAIL_RECIPIENT1}}\"\n";
+        printf PARAM_HDL "    EMAIL_RECIPIENT2                    = \"${CONFIGFILE{$cfgset}{EMAIL_RECIPIENT2}}\"\n";
+        printf PARAM_HDL "    EMAIL_RECIPIENT3                    = \"${CONFIGFILE{$cfgset}{EMAIL_RECIPIENT3}}\"\n";
+        printf PARAM_HDL "    EMAIL_SUBJECT                       = \"${CONFIGFILE{$cfgset}{EMAIL_SUBJECT}}\"\n";
+        printf PARAM_HDL "    EMAIL_MAILBODY                      = \"${CONFIGFILE{$cfgset}{EMAIL_MAILBODY}}\"\n";
+
+        # Write out the DDNS information.
+        #
+        printf PARAM_HDL "    #\n    # DDNS Dynamic IP configuration.\n    #\n";
+        printf PARAM_HDL "    DDNS_ENABLE                         = \"${CONFIGFILE{$cfgset}{DDNS_ENABLE}}\"\n";
+        printf PARAM_HDL "    DDNS_SERVER_IP                      = \"${CONFIGFILE{$cfgset}{DDNS_SERVER_IP}}\"\n";
+        printf PARAM_HDL "    DDNS_CLIENT_DOMAIN                  = \"${CONFIGFILE{$cfgset}{DDNS_CLIENT_DOMAIN}}\"\n";
+        printf PARAM_HDL "    DDNS_CLIENT_USERNAME                = \"${CONFIGFILE{$cfgset}{DDNS_CLIENT_USERNAME}}\"\n";
+        printf PARAM_HDL "    DDNS_CLIENT_PASSWORD                = \"${CONFIGFILE{$cfgset}{DDNS_CLIENT_PASSWORD}}\"\n";
+        printf PARAM_HDL "    DDNS_PROXY_ENABLE                   = \"${CONFIGFILE{$cfgset}{DDNS_PROXY_ENABLE}}\"\n";
+        printf PARAM_HDL "    DDNS_PROXY_IP                       = \"${CONFIGFILE{$cfgset}{DDNS_PROXY_IP}}\"\n";
+        printf PARAM_HDL "    DDNS_PROXY_PORT                     = \"${CONFIGFILE{$cfgset}{DDNS_PROXY_PORT}}\"\n";
+
+        # Write out the TIME information.
+        #
+        printf PARAM_HDL "    #\n    # Time configuration.\n    #\n";
+        printf PARAM_HDL "    TIME_LOCAL_OR_NTP                   = \"${CONFIGFILE{$cfgset}{TIME_LOCAL_OR_NTP}}\"\n";
+        printf PARAM_HDL "    TIME_NTP_SERVER_IP                  = \"${CONFIGFILE{$cfgset}{TIME_NTP_SERVER_IP}}\"\n";
+        printf PARAM_HDL "    TIME_NTP_TIMEZONE_ID                = ${CONFIGFILE{$cfgset}{TIME_NTP_TIMEZONE_ID}}\n";
+        printf PARAM_HDL "    TIME_NTP_TIMEZONE_DST               = ${CONFIGFILE{$cfgset}{TIME_NTP_TIMEZONE_DST}}\n";
+        printf PARAM_HDL "    TIME_NTP_TIMEZONE_OFFSET            = ${CONFIGFILE{$cfgset}{TIME_NTP_TIMEZONE_OFFSET}}\n";
+
+        # For each device, output the device configuration and the port configuration for the device.
+        #
+        for(my $dvc=U3SHIELD::MIN_DEVICE_LIMIT; $dvc < U3SHIELD::MAX_DEVICE_LIMIT; $dvc++)
+        {
+            # Check to see if this entry is configured, if it is, extract data and write to config file.
+            #
+            my $valid = "";
+			if(exists $CONFIGFILE{$cfgset}{ACTIVE})
+			{
+                $dynstr  = "(undef, \$valid) = $CONFIGFILE{$cfgset}{BOARD}::GetDeviceConfig($dvc, \"DEVICE_ENABLED\");";
+			} else
+			{
+                $dynstr = "          \$valid = \$CONFIGFILE{\'$cfgset\'}{\'DEVICE_${dvc}_ENABLED\'};";
+			}
+			eval $dynstr;
+
+            if(defined $valid && $valid ne "")
+            {
+                printf PARAM_HDL "    #\n    # Attached Device $dvc configuration.\n    #\n";
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "ENABLED",              $dvc, 1, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "TYPE",                 $dvc, 1, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "NAME",                 $dvc, 1, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "DESCRIPTION",          $dvc, 1, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "PORT_MIN",             $dvc, 0, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "PORT_MAX",             $dvc, 0, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "BASE_ADDR",            $dvc, 0, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "UART",                 $dvc, 1, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "UART_BAUD",            $dvc, 0, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "UART_DATABITS",        $dvc, 0, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "UART_PARITY",          $dvc, 1, 35);
+                formatDeviceConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "DEVICE",   "UART_STOPBITS",        $dvc, 0, 35);
+
+                # Lookup start and end ports and write out configuration.
+                #
+                my ($r, $board, $startPort, $endPort) = (0, $CONFIGFILE{$cfgset}{BOARD}, $CONFIGFILE{$cfgset}{"DEVICE_${dvc}_PORT_MIN"}, $CONFIGFILE{$cfgset}{"DEVICE_${dvc}_PORT_MAX"});
+				if(exists $CONFIGFILE{$cfgset}{ACTIVE})
+				{
+                    $dynstr  = "(\$r, \$startPort) = ${board}::GetDeviceConfig($dvc, \"DEVICE_PORT_MIN\");";
+					$dynstr .= "(\$r, \$endPort)   = ${board}::GetDeviceConfig($dvc, \"DEVICE_PORT_MAX\");";
+				    eval $dynstr;
+			    }
+
+                for(my $idx=$startPort; $idx <= $endPort; $idx++)
+                {
+                    printf PARAM_HDL "    #\n    # Port Configuration $idx\n    #\n";
+					formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ENABLED",                 $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "NAME",                    $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "DESCRIPTION",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "LOCKED",                  $idx, 1, 35);
+					formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "MODE",                    $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "POWERUPSTATE",            $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "POWERDOWNSTATE",          $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_STATE_VALUE",          $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_STATE_VALUE",         $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_0",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_0",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_0",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_0",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_1",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_1",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_1",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_1",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_2",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_2",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_2",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_2",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_3",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_3",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_3",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_3",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_4",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_4",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_4",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_4",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_5",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_5",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_5",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_5",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_6",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_6",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_6",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_6",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_7",               $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_7",              $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "ON_TIME_ENABLE_7",        $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "OFF_TIME_ENABLE_7",       $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ENABLE_0",           $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ENABLE_1",           $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ENABLE_2",           $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ENABLE_3",           $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_0",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_1",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_2",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_3",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TYPE_0",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TYPE_1",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TYPE_2",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TYPE_3",             $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_WAIT_TIME_0",   $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_WAIT_TIME_1",   $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_WAIT_TIME_2",   $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ADDR_WAIT_TIME_3",   $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TO_PING_TIME_0",     $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TO_PING_TIME_1",     $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TO_PING_TIME_2",     $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_TO_PING_TIME_3",     $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_FAIL_COUNT_0",       $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_FAIL_COUNT_1",       $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_FAIL_COUNT_2",       $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_FAIL_COUNT_3",       $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_SUCCESS_COUNT_0",    $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_SUCCESS_COUNT_1",    $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_SUCCESS_COUNT_2",    $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_SUCCESS_COUNT_3",    $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_LOGIC_FOR_FAIL",     $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_LOGIC_FOR_SUCCESS",  $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ACTION_ON_FAIL",     $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ACTION_ON_SUCCESS",  $idx, 1, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ACTION_SUCCESS_TIME",$idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "PING_ACTION_FAIL_TIME",   $idx, 0, 35);
+                    formatPortConfig(PARAM_HDL, \%{$CONFIGFILE{$cfgset}}, "PORT", "RESET_TIME",              $idx, 0, 35);
+                }
+            }
+        }
+        printf PARAM_HDL "ENDCONFIG\n";
+        printf PARAM_HDL "#\n";
+    }
+    close(PARAM_HDL);
+
+    # Save old cfg file to next available ssquential extension and rename the new one we just created.
+    #
+    my $backupParamFile = Utilities::getNextFile(1, 1, ${PARAMFILEDIR}, "${PARAMFILEBASE}\.", ${PARAMFILEEXT});
+    move("${PARAMFILEDIR}/${PARAMFILEBASE}${PARAMFILEEXT}",      "${backupParamFile}");
+    move("${PARAMFILEDIR}/${PARAMFILEBASE}${PARAMFILEEXT}\.new", "${PARAMFILEDIR}/${PARAMFILEBASE}${PARAMFILEEXT}");
+
+    # Remove any temporary locking file.
+    #
+    if( -e "${backupParamFile}.tmp" ) { unlink("${backupParamFile}.tmp"); }
+}
+
+#########################################################################################################################
+# MAIN PROGRAM ENTRY POINT                                                                                              #
+#########################################################################################################################
+
+# Initialise PARAMS array before loading it up with config data.
+#
+$PARAMS{BOARD}                           = "NOBOARD";
+$PARAMS{DDNS_CLIENT_DOMAIN}              = "";
+$PARAMS{DDNS_CLIENT_PASSWORD}            = "";
+$PARAMS{DDNS_CLIENT_USERNAME}            = "";
+$PARAMS{DDNS_ENABLE}                     = "DISABLED";
+$PARAMS{DDNS_PROXY_ENABLE}               = "DISABLED";
+$PARAMS{DDNS_PROXY_IP}                   = "";
+$PARAMS{DDNS_PROXY_PORT}                 = "";
+$PARAMS{DDNS_SERVER_IP}                  = "";
+$PARAMS{DEBUG}                           = 0;
+$PARAMS{EMAIL_MAILBODY}                  = "You are receiving this email because your ${SERVER_NAME}${SERVER_MODEL} v${PROGRAMVERSION} has" .
+                                           " encountered a condition outlined below.";
+$PARAMS{EMAIL_PASSWORD}                  = "";
+$PARAMS{EMAIL_POP3_SERVER_IP}            = "";
+$PARAMS{EMAIL_POP3_SERVER_PORT}          = 110;
+$PARAMS{EMAIL_RECIPIENT1}                = "";
+$PARAMS{EMAIL_RECIPIENT2}                = "";
+$PARAMS{EMAIL_RECIPIENT3}                = "";
+$PARAMS{EMAIL_SENDER}                    = "";
+$PARAMS{EMAIL_SMTP_OR_POP3}              = "no";
+$PARAMS{EMAIL_SMTP_SERVER_IP}            = "";
+$PARAMS{EMAIL_SMTP_SERVER_PORT}          = 25;
+$PARAMS{EMAIL_SUBJECT}                   = "${SERVER_NAME}${SERVER_MODEL} Alert!";
+$PARAMS{EMAIL_USERNAME}                  = "";
+$PARAMS{EMAIL_USE_AUTHENTICATION}        = "no";
+$PARAMS{HTTP_DOC_PATH}                   = "/usr/local/DPWR/htdocs";
+$PARAMS{HTTP_LOGFILE}                    = "/usr/local/DPWR/log/dpwr_http.log";
+$PARAMS{HTTP_MAX_RETRIES}                = 5;
+$PARAMS{HTTP_PASSWORD}                   = "";
+$PARAMS{HTTP_SERVER_HOST}                = "localhost";
+$PARAMS{HTTP_SERVER_PORT}                = 80;
+$PARAMS{HTTP_SESSION_TIMEOUT}            = 300;
+$PARAMS{TITLE}                           = "Unconfigured";
+$PARAMS{LOGFILE}                         = "/usr/local/DPWR/log/dpwr.log";
+$PARAMS{LOGLEVEL}                        = 2;
+$PARAMS{SYSTEM}                          = "Linux";
+$PARAMS{TIME_LOCAL_OR_NTP}               = "LOCAL";
+$PARAMS{TIME_NTP_SERVER_IP}              = "";
+$PARAMS{TIME_NTP_TIMEZONE_ID}            = 1;
+$PARAMS{TIME_NTP_TIMEZONE_DST}           = 0;
+$PARAMS{TIME_NTP_TIMEZONE_OFFSET}        = 0;
+
+# Parse arguments and put into required variables.
+#
+GetOptions( "debug=i"   => \$PARAMS{DEBUG},       # Debugging level.
+            "logging=i" => \$PARAMS{LOGLEVEL}     # Logging level.
+          );
+
+##############################################################
+# Load up the parameters.
+##############################################################i
+loadParams();
+
+# Initialise Utilities Module.
+#
+Utilities::init($PARAMS{LOGFILE},$PARAMS{DEBUG},$PARAMS{LOGLEVEL});
+
+##############################################################
+# Initialise connected I/O boards.
+##############################################################i
+if($PARAMS{'BOARD'} eq 'U3SHIELD')
+{
+    # Overwrite the U3SHIELD default values with the paramfile settings.
+    #
+    U3SHIELD::SetLogFile($PARAMS{'LOGFILE'});
+
+    # Device matrix - types of devices connected to U3SHIELD board.
+    #
+    my ($valid, $result) = (undef, 0);
+    for(my $dvc=0; $dvc < U3SHIELD::MAX_DEVICE_LIMIT; $dvc++)
+    {
+        # Check to see if this entry exists in the config file, it it does, send the parameters to the board.
+        #
+        eval "\$valid = \$PARAMS{DEVICE_${dvc}_TYPE}";
+        if(defined $valid)
+        {
+            # First we send the parameter to the driver which validates it and makes any internal changes.
+            #
+            my ($func, $vbase, $vbasep, $r, $rc, $err, $errMsg, $p) = 
+				("U3SHIELD::SetDeviceConfig", "DEVICE_", "DEVICE_${dvc}_", 0, 0, "", "", "\$rc += \$r; \$errMsg = \$err . \$errMsg; ");
+            eval "(\$r, \$PARAMS{${vbasep}TYPE},          \$err) = ${func}($dvc, \"${vbase}TYPE\",          \$PARAMS{${vbasep}TYPE});          ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}NAME},          \$err) = ${func}($dvc, \"${vbase}NAME\",          \$PARAMS{${vbasep}NAME});          ${p}"; 
+            eval "(\$r, \$PARAMS{${vbasep}DESCRIPTION},   \$err) = ${func}($dvc, \"${vbase}DESCRIPTION\",   \$PARAMS{${vbasep}DESCRIPTION});   ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}PORT_MIN},      \$err) = ${func}($dvc, \"${vbase}PORT_MIN\",      \$PARAMS{${vbasep}PORT_MIN});      ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}PORT_MAX},      \$err) = ${func}($dvc, \"${vbase}PORT_MAX\",      \$PARAMS{${vbasep}PORT_MAX});      ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}BASE_ADDR},     \$err) = ${func}($dvc, \"${vbase}BASE_ADDR\",     \$PARAMS{${vbasep}BASE_ADDR});     ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}UART},          \$err) = ${func}($dvc, \"${vbase}UART\",          \$PARAMS{${vbasep}UART});          ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}UART_BAUD},     \$err) = ${func}($dvc, \"${vbase}UART_BAUD\",     \$PARAMS{${vbasep}UART_BAUD});     ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}UART_DATABITS}, \$err) = ${func}($dvc, \"${vbase}UART_DATABITS\", \$PARAMS{${vbasep}UART_DATABITS}); ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}UART_PARITY},   \$err) = ${func}($dvc, \"${vbase}UART_PARITY\",   \$PARAMS{${vbasep}UART_PARITY});   ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}UART_STOPBITS}, \$err) = ${func}($dvc, \"${vbase}UART_STOPBITS\", \$PARAMS{${vbasep}UART_STOPBITS}); ${p}";
+            eval "(\$r, \$PARAMS{${vbasep}ENABLED},       \$err) = ${func}($dvc, \"${vbase}ENABLED\",       \$PARAMS{${vbasep}ENABLED});       ${p}";
+
+			# Verify all ok.
+            #
+			if($rc < 0)
+			{
+                die "Error ($errMsg), ReturnCode ($rc) in DEVICE config for DEVICE $dvc - see log file for details.";
+			}
+			elsif($rc > 0)
+			{
+                Utilities::log(1, MODULE, "main", "$errMsg");
+			}
+
+            # Port Matrix - definition of each Port connected to a device on the U3SHIELD board.
+            #
+            my ($startPort, $endPort) = (0, 0);
+            eval "(\$r, \$startPort, \$err) = $PARAMS{BOARD}::GetDeviceConfig($dvc, \"DEVICE_PORT_MIN\");";
+            eval "(\$r, \$endPort,   \$err) = $PARAMS{BOARD}::GetDeviceConfig($dvc, \"DEVICE_PORT_MAX\");";
+            for(my $idx=$startPort; $idx <= $endPort; $idx++)
+            {
+                # Check to see if this entry exists, if not, do not overwrite the defaults setup in the module.
+                #
+                $valid = "";
+                eval "\$valid = \$PARAMS{PORT_${idx}_NAME}";
+                next if(!defined $valid || $valid eq "");
+
+                my ($func, $vbase, $vbasep, $r, $rc) = ("U3SHIELD::SetPortConfig", "PORT_", "PARAMS{PORT_${idx}_", 0, 0);
+                eval "(\$r, \$${vbasep}NAME})                     = ${func}($idx, \"${vbase}NAME\",                  \$${vbasep}NAME}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}DESCRIPTION})              = ${func}($idx, \"${vbase}DESCRIPTION\",           \$${vbasep}DESCRIPTION}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}LOCKED})                   = ${func}($idx, \"${vbase}LOCKED\",                \$${vbasep}LOCKED}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}MODE})                     = ${func}($idx, \"${vbase}MODE\",                  \$${vbasep}MODE}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}POWERUPSTATE})             = ${func}($idx, \"${vbase}POWERUPSTATE\",          \$${vbasep}POWERUPSTATE}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}POWERDOWNSTATE})           = ${func}($idx, \"${vbase}POWERDOWNSTATE\",        \$${vbasep}POWERDOWNSTATE}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_0})                = ${func}($idx, \"${vbase}ON_TIME_0\",             \$${vbasep}ON_TIME_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_1})                = ${func}($idx, \"${vbase}ON_TIME_1\",             \$${vbasep}ON_TIME_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_2})                = ${func}($idx, \"${vbase}ON_TIME_2\",             \$${vbasep}ON_TIME_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_3})                = ${func}($idx, \"${vbase}ON_TIME_3\",             \$${vbasep}ON_TIME_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_4})                = ${func}($idx, \"${vbase}ON_TIME_4\",             \$${vbasep}ON_TIME_4}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_5})                = ${func}($idx, \"${vbase}ON_TIME_5\",             \$${vbasep}ON_TIME_5}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_6})                = ${func}($idx, \"${vbase}ON_TIME_6\",             \$${vbasep}ON_TIME_6}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_7})                = ${func}($idx, \"${vbase}ON_TIME_7\",             \$${vbasep}ON_TIME_7}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_0})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_0\",      \$${vbasep}ON_TIME_ENABLE_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_1})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_1\",      \$${vbasep}ON_TIME_ENABLE_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_2})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_2\",      \$${vbasep}ON_TIME_ENABLE_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_3})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_3\",      \$${vbasep}ON_TIME_ENABLE_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_4})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_4\",      \$${vbasep}ON_TIME_ENABLE_4}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_5})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_5\",      \$${vbasep}ON_TIME_ENABLE_5}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_6})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_6\",      \$${vbasep}ON_TIME_ENABLE_6}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_TIME_ENABLE_7})         = ${func}($idx, \"${vbase}ON_TIME_ENABLE_7\",      \$${vbasep}ON_TIME_ENABLE_7}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_0})               = ${func}($idx, \"${vbase}OFF_TIME_0\",            \$${vbasep}OFF_TIME_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_1})               = ${func}($idx, \"${vbase}OFF_TIME_1\",            \$${vbasep}OFF_TIME_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_2})               = ${func}($idx, \"${vbase}OFF_TIME_2\",            \$${vbasep}OFF_TIME_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_3})               = ${func}($idx, \"${vbase}OFF_TIME_3\",            \$${vbasep}OFF_TIME_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_4})               = ${func}($idx, \"${vbase}OFF_TIME_4\",            \$${vbasep}OFF_TIME_4}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_5})               = ${func}($idx, \"${vbase}OFF_TIME_5\",            \$${vbasep}OFF_TIME_5}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_6})               = ${func}($idx, \"${vbase}OFF_TIME_6\",            \$${vbasep}OFF_TIME_6}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_7})               = ${func}($idx, \"${vbase}OFF_TIME_7\",            \$${vbasep}OFF_TIME_7}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_0})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_0\",     \$${vbasep}OFF_TIME_ENABLE_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_1})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_1\",     \$${vbasep}OFF_TIME_ENABLE_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_2})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_2\",     \$${vbasep}OFF_TIME_ENABLE_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_3})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_3\",     \$${vbasep}OFF_TIME_ENABLE_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_4})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_4\",     \$${vbasep}OFF_TIME_ENABLE_4}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_5})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_5\",     \$${vbasep}OFF_TIME_ENABLE_5}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_6})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_6\",     \$${vbasep}OFF_TIME_ENABLE_6}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_TIME_ENABLE_7})        = ${func}($idx, \"${vbase}OFF_TIME_ENABLE_7\",     \$${vbasep}OFF_TIME_ENABLE_7}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ON_STATE_VALUE})           = ${func}($idx, \"${vbase}ON_STATE_VALUE\",        \$${vbasep}ON_STATE_VALUE}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}OFF_STATE_VALUE})          = ${func}($idx, \"${vbase}OFF_STATE_VALUE\",       \$${vbasep}OFF_STATE_VALUE}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ENABLE_0})            = ${func}($idx, \"${vbase}PING_ENABLE_0\",         \$${vbasep}PING_ENABLE_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ENABLE_1})            = ${func}($idx, \"${vbase}PING_ENABLE_1\",         \$${vbasep}PING_ENABLE_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ENABLE_2})            = ${func}($idx, \"${vbase}PING_ENABLE_2\",         \$${vbasep}PING_ENABLE_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ENABLE_3})            = ${func}($idx, \"${vbase}PING_ENABLE_3\",         \$${vbasep}PING_ENABLE_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_0})              = ${func}($idx, \"${vbase}PING_ADDR_0\",           \$${vbasep}PING_ADDR_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_1})              = ${func}($idx, \"${vbase}PING_ADDR_1\",           \$${vbasep}PING_ADDR_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_2})              = ${func}($idx, \"${vbase}PING_ADDR_2\",           \$${vbasep}PING_ADDR_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_3})              = ${func}($idx, \"${vbase}PING_ADDR_3\",           \$${vbasep}PING_ADDR_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TYPE_0})              = ${func}($idx, \"${vbase}PING_TYPE_0\",           \$${vbasep}PING_TYPE_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TYPE_1})              = ${func}($idx, \"${vbase}PING_TYPE_1\",           \$${vbasep}PING_TYPE_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TYPE_2})              = ${func}($idx, \"${vbase}PING_TYPE_2\",           \$${vbasep}PING_TYPE_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TYPE_3})              = ${func}($idx, \"${vbase}PING_TYPE_3\",           \$${vbasep}PING_TYPE_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_WAIT_TIME_0})    = ${func}($idx, \"${vbase}PING_ADDR_WAIT_TIME_0\", \$${vbasep}PING_ADDR_WAIT_TIME_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_WAIT_TIME_1})    = ${func}($idx, \"${vbase}PING_ADDR_WAIT_TIME_1\", \$${vbasep}PING_ADDR_WAIT_TIME_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_WAIT_TIME_2})    = ${func}($idx, \"${vbase}PING_ADDR_WAIT_TIME_2\", \$${vbasep}PING_ADDR_WAIT_TIME_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ADDR_WAIT_TIME_3})    = ${func}($idx, \"${vbase}PING_ADDR_WAIT_TIME_3\", \$${vbasep}PING_ADDR_WAIT_TIME_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TO_PING_TIME_0})      = ${func}($idx, \"${vbase}PING_TO_PING_TIME_0\",   \$${vbasep}PING_TO_PING_TIME_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TO_PING_TIME_1})      = ${func}($idx, \"${vbase}PING_TO_PING_TIME_1\",   \$${vbasep}PING_TO_PING_TIME_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TO_PING_TIME_2})      = ${func}($idx, \"${vbase}PING_TO_PING_TIME_2\",   \$${vbasep}PING_TO_PING_TIME_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_TO_PING_TIME_3})      = ${func}($idx, \"${vbase}PING_TO_PING_TIME_3\",   \$${vbasep}PING_TO_PING_TIME_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_FAIL_COUNT_0})        = ${func}($idx, \"${vbase}PING_FAIL_COUNT_0\",     \$${vbasep}PING_FAIL_COUNT_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_FAIL_COUNT_1})        = ${func}($idx, \"${vbase}PING_FAIL_COUNT_1\",     \$${vbasep}PING_FAIL_COUNT_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_FAIL_COUNT_2})        = ${func}($idx, \"${vbase}PING_FAIL_COUNT_2\",     \$${vbasep}PING_FAIL_COUNT_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_FAIL_COUNT_3})        = ${func}($idx, \"${vbase}PING_FAIL_COUNT_3\",     \$${vbasep}PING_FAIL_COUNT_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_SUCCESS_COUNT_0})     = ${func}($idx, \"${vbase}PING_SUCCESS_COUNT_0\",  \$${vbasep}PING_SUCCESS_COUNT_0}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_SUCCESS_COUNT_1})     = ${func}($idx, \"${vbase}PING_SUCCESS_COUNT_1\",  \$${vbasep}PING_SUCCESS_COUNT_1}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_SUCCESS_COUNT_2})     = ${func}($idx, \"${vbase}PING_SUCCESS_COUNT_2\",  \$${vbasep}PING_SUCCESS_COUNT_2}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_SUCCESS_COUNT_3})     = ${func}($idx, \"${vbase}PING_SUCCESS_COUNT_3\",  \$${vbasep}PING_SUCCESS_COUNT_3}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_LOGIC_FOR_FAIL})      = ${func}($idx, \"${vbase}PING_LOGIC_FOR_FAIL\",   \$${vbasep}PING_LOGIC_FOR_FAIL}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_LOGIC_FOR_SUCCESS})   = ${func}($idx, \"${vbase}PING_LOGIC_FOR_SUCCESS\",\$${vbasep}PING_LOGIC_FOR_SUCCESS}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ACTION_ON_FAIL})      = ${func}($idx, \"${vbase}PING_ACTION_ON_FAIL\",   \$${vbasep}PING_ACTION_ON_FAIL}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ACTION_ON_SUCCESS})   = ${func}($idx, \"${vbase}PING_ACTION_ON_SUCCESS\",\$${vbasep}PING_ACTION_ON_SUCCESS}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ACTION_SUCCESS_TIME}) = ${func}($idx, \"${vbase}PING_ACTION_SUCCESS_TIME\",S{${vbasep}PING_ACTION_SUCCESS_TIME}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}PING_ACTION_FAIL_TIME})    = ${func}($idx, \"${vbase}PING_ACTION_FAIL_TIME\", \$${vbasep}PING_ACTION_FAIL_TIME}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}RESET_TIME})               = ${func}($idx, \"${vbase}RESET_TIME\",            \$${vbasep}RESET_TIME}); \$rc += \$r;";
+                eval "(\$r, \$${vbasep}ENABLED})                  = ${func}($idx, \"${vbase}ENABLED\",               \$${vbasep}ENABLED}); \$rc += \$r;";
+
+			    # Verify all ok.
+                #
+			    if($rc != 0)
+			    {
+                    die "Error in PORT config for DEVICE $dvc, PORT $idx - see log file for details.";
+                }
+            }
+        }
+    }
+
+    # Initialise devices.
+    #
+	my $errMsg = U3SHIELD::InitDevices();
+	if($errMsg ne "")
+	{
+		die $errMsg;
+	}
+}
+else
+{
+    die "No BOARD or unknown BOARD:$PARAMS{'BOARD'} given in config file.";
+}
+
+# Enable to output a new config format.
+#
+#writeParams();
+#exit 0;
+
+# Initialise NTP if enabled.
+#
+if($PARAMS{TIME_LOCAL_OR_NTP} eq "NTP")
+{
+    Utilities::setTime($PARAMS{TIME_LOCAL_OR_NTP}, "", "", $PARAMS{TIME_NTP_SERVER_IP}, $PARAMS{TIME_NTP_TIMEZONE_ID}, $PARAMS{TIME_NTP_TIMEZONE_DST},
+			           $PARAMS{TIME_NTP_TIMEZONE_OFFSET});
+}
+
+# Setup and start Dynamic DNS address with given parameters.
+#
+Utilities::setupDDNS($PARAMS{DDNS_ENABLE}, $PARAMS{DDNS_SERVER_IP}, $PARAMS{DDNS_CLIENT_DOMAIN}, $PARAMS{DDNS_CLIENT_USERNAME},
+                     $PARAMS{DDNS_CLIENT_PASSWORD}, $PARAMS{DDNS_PROXY_ENABLE}, $PARAMS{DDNS_PROXY_IP}, $PARAMS{DDNS_PROXY_PORT});
+
+# Initialise HTTP server control variables.
+#
+my %http              = (); # Hash, per thread, to hold all HTTP control parameters.
+my @chldBuffer        = (); # Need a shared array for storage of the child commands.
+$http{PARAMS}         = \%PARAMS;
+$http{METHOD}         = "";
+$http{ADDRESS}        = "";
+$http{VERSION}        = 0;
+$http{REFERENCE}      = "";
+$http{USERAGENT}      = "";
+$http{HOST}           = "";
+$http{REFERER}        = "";
+$http{CONTENTLENGTH}  = "";
+$http{CURRENTCODE}    = 0;
+$http{EXPECT}         = "";
+$http{AUTHORISATION}  = "";
+$http{MODSINCE}       = "";
+$http{HOSTNAME}       = "";
+$http{PORT}           = "";
+$http{IP}             = "";
+$http{POSTDATA}       = "";
+$http{HTMLBUF}        = "";
+$http{HTMLMENUTMPL}   = "";
+$http{MODE}           = "";
+$http{VARIABLES}      = "";
+$http{CONTENTTYPE}    = 0;
+$http{RFCDATE}        = "";
+$http{DATE}           = "";
+$http{CGI}            = undef;
+$http{SESSION}        = undef;
+$http{COOKIE}         = undef;
+$http{STATIOSLTR}     = scalar localtime;
+$http{STATIOSUPTIME}  = time();
+$http{STATIOSMAXSEC}  = 1;
+$http{STATIOSLASTSEC} = 1;
+$http{STATIOSREQ}     = 1;
+$http{CHLDCMDBUF}     = \@chldBuffer;
+$http{CHLDCMDCNT}     = 0;
+
+# Variables shared amongst threads.
+#
+share($http{CHLDCMDBUF});
+share($http{CHLDCMDCNT});
+
+# Pre-load templates.
+#
+httpLoadMenuTemplate(\%http);
+
+# Bind to the HTTP server port according to system we are running on.
+#
+$0 = "$SERVER_DNAME: binding port ...";
+$bindthis = pack($SOCKADDR, 2, $PARAMS{'HTTP_SERVER_PORT'}, pack('C4', 0, 0, 0, 0));
+if( "$ENV{'SYSTEM'}" eq "Linux")
+{
+    socket(S, 2, 1, 6);
+    setsockopt(S, 65535, 4, 1);
+} else
+{
+    setsockopt(S, 1, 2, 1);
+    socket(S, 2, 2, 6);
+}
+#_stop_blocking(S);
+
+# Bind to the socket and start listening for connections.
+#
+bind(S, $bindthis) || die("$0: while binding port $PARAMS{'HTTP_SERVER_PORT'}:\n\"$!\"\n");
+listen(S, 128);
+
+# Ensure that the socket is not blocking.
+#
+my $flags = fcntl(S, F_GETFL, 0) or die "can't getfl(): $!\n";
+$flags = fcntl(S, F_SETFL, $flags | O_NONBLOCK) or die "can't setfl(): $!\n";
+
+# Indicate that we are ready and waiting to serve.
+#
+$0 = "$SERVER_DNAME: on ANY:$PARAMS{'HTTP_SERVER_PORT'}, ready!";
+$masterPid = $$;
+defaultsignals;
+
+# Forever serving loop, receiving incoming connections, serving them, calling the 
+# I/O board handler etc.
+#
+my $incomingAddr;
+my $pid;
+for(;;)
+{
+    # Sample time at start of loop.
+    #
+    $timenow=Time::HiRes::time();
+
+    # Accept incoming connections, forking a pseudo-thread to handle it.
+    #
+    do {
+        $incomingAddr=accept(NS,S);
+        if($incomingAddr)
+        {
+            # Create a child thread.
+            #
+            my $thread = threads->new( { 'exit' => 'thread_only' },
+                sub
+                {
+                    # In the child, connect STDIN/STDOUT to the connection then call the http server to
+                    # serve the client.
+                    #
+                    $0 = "$SERVER_DNAME (child of $masterPid): preparing to serve client";
+                    defaultsignals;
+
+                    # Connect STDIN/STDOUT to the opened socket.
+                    #
+                    open(STDIN, "<&NS");
+                    open(STDOUT, ">&NS");
+
+                    # Serve the client.
+                    #
+                    httpServer(\%http);
+
+                    # Close opened resources and exit child.
+                    #
+                    close(STDIN);
+                    close(STDOUT);
+                    exit;
+                });
+            $thread->detach();
+        }
+        close(NS);
+    } while($incomingAddr);
+
+    # If a signal has come in requesting termination, then exit.
+    #
+    if( $TERMINATE_PROC == 1 )
+    {
+		# Close threads by joining.
+        #
+        foreach my $thread (threads->list(threads::joinable))
+        {
+            my $result = $thread->join();
+            my $tid = $thread->tid;
+		}
+
+        # Terminate the U3SHIELD control if enabled.
+        #
+        if($PARAMS{'BOARD'} eq 'U3SHIELD')
+        {
+            U3SHIELD::Terminate();
+        }
+
+        # And exit...
+        #
+        goto FIN; 
+    }
+
+    # Run the U3SHIELD control code if enabled.
+    #
+    if($PARAMS{'BOARD'} eq 'U3SHIELD')
+    {
+        U3SHIELD::MainLoop();
+    }
+
+    # If children have passed back commands, run them and reset buffer.
+    #
+    if($http{CHLDCMDCNT} > 0)
+    {
+        lock($http{CHLDCMDCNT});
+        for(my $idx=0; $idx < $http{CHLDCMDCNT}; $idx++)
+        {
+            eval "$http{CHLDCMDBUF}[$idx]";
+            Utilities::log(1, MODULE, "main", "CMD:$http{CHLDCMDBUF}[$idx]:,$idx");
+        }
+        $http{CHLDCMDCNT} = 0;
+    }
+
+    # Process threads which have exitted.
+    #
+    foreach my $thread (threads->list(threads::joinable))
+    {
+        my $result = $thread->join();
+        my $tid = $thread->tid;
+
+        # Inform the I/O board of the event.
+        # 
+        if($PARAMS{'BOARD'} eq 'U3SHIELD')
+        {
+            U3SHIELD::SigThread($tid, $result);
+        }
+    }
+
+    # Update statistics for the web server.
+    #
+    if ($http{STATIOSLTR} eq (scalar localtime)) {
+        $http{STATIOSLASTSEC}++;
+    } else {
+        $http{STATIOSMAXSEC} = ($http{STATIOSMAXSEC} <= $http{STATIOSLASTSEC}) ? $http{STATIOSLASTSEC} : $http{STATIOSMAXSEC};
+        $http{STATIOSLASTSEC} = 1;
+    }
+    $http{STATIOSREQ}++;
+    $0 = "$SERVER_DNAME: on ANY:$PARAMS{'HTTP_SERVER_PORT'}, last request " .  scalar localtime;
+    
+    # Calculate the time elapsed in the loop and the amount of time we
+    # must sleep.
+    #
+    $elapsed=Time::HiRes::time() - $timenow;
+    $tosleep=(0.10 - $elapsed) * 1000000;
+    #Utilities::log(1, MODULE, "main", "timenow=$timenow,elapsed=$elapsed,$tosleep");
+
+    # Sleep for a while to conserve CPU.
+    #
+    usleep($tosleep) if($tosleep >= 100);
+}
+
+FIN:
+    close(S);
+    exit $EXIT_CODE;

@@ -1,0 +1,103 @@
+#!/bin/bash
+##########################################################################################################
+##
+## Name:            ix_cfgTCA6416A
+## Created:         September 2015
+## Author(s):       Philip Smart
+## Description:     A shell script helper program for the dPWR program.
+##                  This script is executed by the dPWR program to setup the 16bit I/O expander chip
+##                  TCA6416A using the I2C protocol. It configures the chip and the kernel such that
+##                  all ports are accessible via the sys-class-gpio api.
+## Credits:         
+## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
+##
+## History:         September 2015   - Initial module written.
+##
+#########################################################################################################
+## This source file is free software: you can redistribute it and#or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This source file is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################################################
+ 
+trap exit 15
+ 
+# Setup the Shield I/O port to outputs.
+#
+BASEADDR=289
+if [ $# = 1 ]; then
+    BASEADDR=$1
+fi
+ENDADDR=`expr ${BASEADDR} + 16`
+
+# First load the i2c module
+#
+if [ ! -d /sys/devices/platform/i2c-gpio.4 ]; then
+    modprobe -q gpio-pca953x
+fi
+
+# If the control structure doesnt exist, exit as we are on a test system.
+#
+if [ ! -d /sys/devices/platform/i2c-gpio.4 ]; then
+    #
+    # Wrong platform or missing module return code.
+    #
+    exit 255
+fi
+
+# Now verify that a previous call didnt setup all the requested ports.
+#
+SETUP=1
+for ((i=${BASEADDR}; i<${ENDADDR}; i++));
+do
+    if [ ! -e /sys/class/gpio/gpio${i} ]; then
+        SETUP=0
+    fi
+done
+if [ ${SETUP} = 1 ]; then
+    # Already setup.
+    exit 0
+fi
+
+#
+# Then select the actual device used on the Shield.
+#
+echo tca6416 0x20 > /sys/devices/platform/i2c-gpio.4/i2c-4/new_device
+
+#
+# Now enable all gpio ports.
+#
+for ((i=${BASEADDR}; i<${ENDADDR}; i++));
+do
+    echo $i > /sys/class/gpio/export;
+done
+
+#
+# Set ports to be outputs.
+#
+for ((i=${BASEADDR}; i<${ENDADDR}; i++));
+do
+    echo "out" > /sys/class/gpio/gpio$i/direction;
+
+    # Change permissions so the main program can control it.
+    #
+    chown -R www-data:www-data /sys/class/gpio$i
+
+    # if [ $i -lt ${BASEADDR} ]; then
+    # value=1
+    # fi
+    #value=0
+    #echo $value > /sys/class/gpio/gpio$i/value
+done
+
+# Success return code.
+#
+exit 0
