@@ -1,6 +1,6 @@
 ## Foreword
 
-This document is a work in progress.
+This document is a work in progress and will be filled out in due course.
 
 
 
@@ -30,7 +30,17 @@ The above was developed and has been reliably in service for the last 4 years. I
 
 ![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9804.jpg)
 
+I'm releasing the software into the public domain as I believe it can be (or parts of it) used in its current form to build a bespoke digital power controller or its web interface used for other projects.
 
+
+
+## dPWR Installation
+
+1) Setup of Linux onto a development board, Odroid as an example.
+
+2) Installing Perl and CPAN libraries: forks, CGI, CGI::Session, Device:SerialPort
+
+3) Installing DPWR and configuring.
 
 
 
@@ -75,7 +85,7 @@ The above was developed and has been reliably in service for the last 4 years. I
 
 
 #### To Do
-
+1) Finish this document into a more usable installation guide.
 
 
 
