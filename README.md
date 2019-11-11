@@ -26,7 +26,7 @@ The above was developed and has been reliably in service for the last 4 years. I
 
 ![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9801.jpg)
 
-![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9801.jpg)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9802.jpg)
 
 ![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9803.jpg)
 
