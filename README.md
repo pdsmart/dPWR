@@ -26,9 +26,14 @@ The above was developed and has been reliably in service for the last 4 years. I
 
 ![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9801.jpg)
 
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9801.jpg)
+
 ![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9803.jpg)
 
 ![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9804.jpg)
+
+The NC800 Ethernet based board, I worked on the module to control it but never actually used it in production.
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/IMG_9799.jpg)
 
 I'm releasing the software into the public domain as I believe it can be (or parts of it) used in its current form to build a bespoke digital power controller or its web interface used for other projects.
 
