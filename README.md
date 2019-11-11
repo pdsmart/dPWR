@@ -12,13 +12,10 @@ I had a hardkernel.org Odroid (a Raspberry Pi type dev board) and U3 Shield alon
 
 Having limited time I discounted C/C++ as it takes considerably longer to develop in these languages especially as performance wasn't a consideration, this left Java, Python and Perl. Having just finished an application for a client in Perl it just seemed a natural choice (even though it is a scripting language primarily developed for reporting but was incredibly rich in it's eco system). 
 
-dPWR had to provide the following functionality:-
-
-o Communicate directly with hardware to configure, set and read GPIO, I2C, Serial Ports and Ethernet ports in order to make use of the variety of boards I had in my bin. A modular system was needed to add hardware and support software as required.
-
-o Provide a web server to allow remote configuration and control.
-
-o Provide configurable automation such that dPWR could monitor a device and take actions as required.
+The functionality requirements for dPWR where:-
+  - Communicate directly with hardware to configure, set and read GPIO, I2C, Serial Ports and Ethernet ports in order to make use of the variety of boards I had in my bin. A modular system was needed to add hardware and support software as required.
+  - Provide a web server to allow remote configuration, control and monitoring.
+  - Provide configurable automation such that dPWR could monitor a device and take actions as required (ie. ping).
 
 The above was developed and has been reliably in service for the last 4 years. I recently removed the dPWR hardware to service it when the Corsair power supplies gave up the ghost and took the photos below.
 
@@ -37,7 +34,7 @@ The NC800 Ethernet based board, I worked on the module to control it but never a
 
 I'm releasing the software into the public domain as I believe it can be (or parts of it) used in its current form to build a bespoke digital power controller or its web interface used for other projects.
 
-
+The schematics for the dPWR hardware will need to be re-captured as they were all paper based.
 
 ## dPWR Installation
 
@@ -97,8 +94,7 @@ I'm releasing the software into the public domain as I believe it can be (or par
 
 ## Credits
 
-Where I have used or based any component on a 3rd parties design I have included the original authors copyright notice.
-
+Where I have used or based any component on a 3rd parties design I have included the original authors copyright notice. All 3rd party software, to my knowledge, is open source and freely useable, if there is found to be any component with licensing restrictions, it will be removed from this repository and a suitable link/config provided.
 
 
 ## Licenses
