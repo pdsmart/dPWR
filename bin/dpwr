@@ -168,21 +168,13 @@ use forks;
 use forks::shared deadlock => {detect=> 1, resolve => 1};
 use POSIX qw(SIGALRM SIGTERM sigaction);
 use Socket;
-#use IO::Socket;
-#use IO::Select;
-#use IO::Pipe;
-#use IO::Handle;
 use Fcntl qw(F_GETFL F_SETFL O_NONBLOCK O_NDELAY);
 use File::Copy;
-#use File::Temp qw(tempfile);
 use Time::HiRes qw(usleep nanosleep);
-#use URI::Escape;
-#use URI::Encode qw(uri_encode uri_decode);
 use Getopt::Long;
 use CGI::Session;
 use CGI;
 use Utilities;
-#use HTML::Entities;
 use U3SHIELD;
 
 #sub trim {
