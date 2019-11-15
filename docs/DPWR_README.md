@@ -1,9 +1,3 @@
-## Foreword
-
-This document is a work in progress and will be filled out in due course.
-
-
-
 ## Overview
 
 I needed a web based power controller to remotely control a large number of devices, Mains (230VAC) and low level DC voltages as well as read remote value such as switch settings. I looked at the market and there wasn't really anything suitable within an acceptable price range (B2B equipment was in the multi-thousand GBP price bracket). I didn't want to design and fabricate a dedicated circuit board so I sifted through my parts bin and used what I found and thus was born the dPWR Controller.
