@@ -3,3 +3,7 @@
 .gradle
 /Releases
 /.nb-gradle/
+jDPWR/target
+jDPWR/*.save
+jDPWR/*.working
+jDPWR/pomsav

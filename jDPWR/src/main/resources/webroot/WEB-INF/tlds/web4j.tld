@@ -1,0 +1,328 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+
+<taglib xmlns="http://java.sun.com/xml/ns/j2ee"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-jsptaglibrary_2_0.xsd"
+  version="2.0"
+>
+
+  <description>Small set of custom tags not available in JSTL</description>
+  <display-name>web4j</display-name>
+  <tlib-version>1.1</tlib-version>
+  <short-name>web4j</short-name>
+  <uri>/web4j</uri>
+    
+    <tag>
+     <description>
+      Use to pre-populate form input elements: text, password, radio button, 
+      checkbox, or drop-down list, using values taken from a Model Object or from 
+      request parameters.
+     </description>
+     <name>populate</name>
+     <tag-class>
+      hirondelle.web4j.ui.tag.Populate
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>using</name>
+      <required>false</required>
+      <rtexprvalue>false</rtexprvalue>
+     </attribute>
+    </tag>
+
+    <tag>
+     <description>
+      Prevents a page from linking to itself, and highlights the current page.
+     </description>
+     <name>highlightCurrentPage</name>
+     <tag-class>
+      hirondelle.web4j.ui.tag.HighlightCurrentPage
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>styleClass</name>
+      <required>false</required>
+      <rtexprvalue>false</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>useTitle</name>
+      <required>false</required>
+      <rtexprvalue>false</rtexprvalue>
+     </attribute>
+    </tag>
+    
+    <tag>
+     <description>
+      Alternately changes the value of the 'class' attribute for the TR tag
+      in its body. This makes rows appear in alternating styles, 
+      increasing table legibility.
+     </description>
+     <name>alternatingRow</name>
+     <tag-class>
+      hirondelle.web4j.ui.tag.AlternatingRow
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>altClass</name>
+      <required>false</required>
+      <rtexprvalue>false</rtexprvalue>
+     </attribute>
+    </tag>
+
+    <tag>
+     <description>
+      Alters the links in its body to point to the various 
+      pages of a result set: Previous, Next, First.
+     </description>
+     <name>pager</name>
+     <tag-class>
+      hirondelle.web4j.ui.tag.Pager
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>pageFrom</name>
+      <required>true</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+
+    <tag>
+     <description>
+      Simple empty tag which emits a DateTime.
+      Emits the current date by default. Optionally, if the name of a  
+      hirondelle.web4j.model.DateTime object is specified, then tag will search 
+      for it in increasingly wider scopes, and render that object instead.
+     </description>
+     <name>showDateTime</name>
+     <tag-class>
+      hirondelle.web4j.ui.tag.ShowDateTime
+     </tag-class>
+     <body-content>empty</body-content>
+     <attribute>
+      <name>name</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>pattern</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>patternKey</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>suppressMidnight</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+    
+    <tag>
+     <description>
+      Simple empty tag which emits a Date.
+      Emits the current date by default. Optionally, if the name of a  
+      java.util.Date object is specified, then tag will search 
+      for it in increasingly wider scopes, and render that Date instead.
+     </description>
+     <name>showDate</name>
+     <tag-class>
+      hirondelle.web4j.ui.tag.ShowDate
+     </tag-class>
+     <body-content>empty</body-content>
+     <attribute>
+      <name>name</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>pattern</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>patternKey</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>timeZone</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>suppressMidnight</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+    
+    <tag>
+     <description>
+      Simple empty tag which optionally emits its body, as 
+      help text for the current page.
+     </description>
+     <name>help</name>
+     <tag-class>
+      hirondelle.fish.help.ShowHelpTag
+     </tag-class>
+     <body-content>scriptless</body-content>
+    </tag>
+    
+    <tag>
+     <description>
+      Renders a hirondelle.web4j.model.MessageList. 
+      The body of the tag is taken as a template for rendering 
+      each item in the MessageList.
+     </description>
+     <name>messages</name>
+     <tag-class>
+      hirondelle.web4j.ui.translate.Messages
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>name</name> <!-- Name of MessageList bean placed in any scope. -->
+      <required>true</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+    
+    <tag>
+     <description>
+      Localizes an item. The item may be specified as this body's tag, or as 
+      a value attribute. If the value attribute is present, this tag's 
+      body must be empty.
+     </description>
+     <name>txt</name>
+     <tag-class>
+      hirondelle.web4j.ui.translate.Text
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>value</name> <!-- item to be translated -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>wikiMarkup</name> <!-- maps *blah* to bold tags, and so on -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>wikiAndHtmlMarkup</name> <!-- maps *blah* to bold tags, and so on, AND allows regular HTML. -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>translate</name> 
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>locale</name>  <!-- Turns off regular translations. Emit or suppress content according to match of specified Locale with LocaleSource. -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+
+    <tag>
+     <description>
+      Localizes the TITLE and ALT attributes found in HTML markup.
+      Also localizes the VALUE attribute of SUBMIT controls.
+      The body of this tag includes markup. Any tags in that markup 
+      having the above TITLE, ALT, or VALUE attributes will have those 
+      attribute values localized by this tag. It is recommended to place 
+      this tag in a top-level, template JSP, such that all content served
+      as part of the template will have all such attributes translated 
+      by a single instance of this tag.
+     </description>
+     <name>tooltip</name>
+     <tag-class>
+      hirondelle.web4j.ui.translate.Tooltips
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>escapeChars</name> <!-- controls escaping of special chars, default: TRUE -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+    
+    <tag>
+     <description>
+      Localizes the free flow text found in its body.
+      The body of this tag includes markup. Any tags in that markup 
+      will be taken as delimiters of units of translatable text. Any leading 
+      and trailing whitespace for such units of text will be preserved for final 
+      rendering, but ignored for the actual translation.
+      WARNING: this tag will translate any text in a TEXTAREA tag, which is usually 
+      undesired (since such tags contain user input). To avoid bad interactions with 
+      the prepopulate tag (above), please nest this tag *inside* the prepopulate tag.
+     </description>
+     <name>txtFlow</name>
+     <tag-class>
+      hirondelle.web4j.ui.translate.TextFlow
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>escapeChars</name> <!-- controls escaping of special chars, default: TRUE -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+    
+    <tag>
+     <description>
+      Shows or hides tag body according to role of logged in user.
+     </description>
+     <name>show</name>
+     <tag-class>
+      hirondelle.web4j.ui.tag.ShowForRole
+     </tag-class>
+     <body-content>scriptless</body-content>
+     <attribute>
+      <name>ifRole</name> <!-- Comma delimited list of accepted roles. -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+     <attribute>
+      <name>ifRoleNot</name> <!-- Comma delimited list of denied roles. -->
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+     </attribute>
+    </tag>
+    
+    <function>
+     <description> 
+       Escapes special characters for presentation in HTML.  
+       
+       You should always first consider using the SafeText class to model text 
+       that may contain special characters.  SafeText will escape characters without any 
+       extra effort on your part, and without needing to call this function.
+       
+       This function should be used only when SafeText is not being used to model free form input. 
+       These occasions should be relatively rare.
+       (One such occasion occurs in the example app's Translation module. There, Translation and BaseText are not modeled 
+       as SafeText since escaping of these items is already done by the customs tags Text, TextFlow, and so on. 
+       If Translation and BaseText were modeled with SafeText, then the escaping would be performed twice.)
+     </description>
+     <name>safe</name>
+     <function-class>hirondelle.web4j.util.EscapeChars</function-class>
+     <function-signature>java.lang.String forHTML(java.lang.String)</function-signature>
+    </function>
+
+    <function>
+     <description> 
+       Escapes ampersand characters in URLs.  
+       When a URL has multiple query parameters, they are concatenated with an ampersand character.
+       Inside a link's HREF attribute, however, such ampersands are actually invalid.
+       They should be escaped to the corresponding character entity.
+     </description>
+     <name>ampersand</name>
+     <function-class>hirondelle.web4j.util.EscapeChars</function-class>
+     <function-signature>java.lang.String forHrefAmpersand(java.lang.String)</function-signature>
+    </function>
+        
+</taglib>
