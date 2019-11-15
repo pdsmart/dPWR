@@ -22,43 +22,43 @@ Assuming a Unix based OS:
 
 As per the dPWR Perl version, the jDPWR application has a comprehensive web interface. It is designed around the Charisma framework ((C) Muhammad Usman) converted to be served with the Eclipse Jetty JSP Server and additional jDPWR specific jsp pages. The following images show the base screens of the web interface which currently exist.
 
-![alt text](../images/ScreenJ1.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ1.png)
 The home screen - blank - but easy enough to add status or other required data/instructions.
 
-![alt text](../images/ScreenJ2.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ2.png)
 The primary output control screen. Each port which is configured for output and enabled is display along with a description and an on/off switch. Simple enough to change a controlled device state.
 
-![alt text](../images/ScreenJ3.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ3.png)
 Options for this screen, setting auto refresh to see updates made by other users etc.
 
-![alt text](../images/ScreenJ4.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ4.png)
 The primary input status screen. Each port which is configured for input and enabled is displayed along with its current value in the form of an on/off switch.
 
-![alt text](../images/ScreenJ5.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ5.png)
 Options for this screen, setting auto refresh to see updates as the ports values change.
 
-![alt text](../images/ScreenJ6.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ6.png)
 A combined input and output screen, you can collapse, close or reorder each block.
 
-![alt text](../images/ScreenJ7.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ7.png)
 Configure a device to be used in the system. Each device has its own driver file, ie: DriverATMega328P.java and DriverTCA6416A.java, it should be relatively straight forward to write a driver for another device.
 
-![alt text](../images/ScreenJ7a.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ7a.png)
 Clicking on a created device allows you to change the parameters and enable/disable.
 
-![alt text](../images/ScreenJ8.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ8.png)
 New device creation pops up a window for configuration data input.
 
-![alt text](../images/ScreenJ9.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ9.png)
 Configure a port to be used within an enabled device. 
 
-![alt text](../images/ScreenJ9a.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ9a.png)
 Clicking on a port allows you to change the parameters and enable/disable it.
 
-![alt text](../images/ScreenJ10.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ10.png)
 New port creation pops up a window to configure a new port on an enabled device.
 
-![alt text](../images/ScreenJ11.png)
+![alt text](https://github.com/pdsmart/DPWR/blob/master/docs/ScreenJ11.png)
 Remaining menu items which need jsp pages complete.
 
 <br>
