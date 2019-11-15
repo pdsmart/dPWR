@@ -1,8 +1,4 @@
-## Foreword
-
-This document is a work in progress and will be filled out in due course.
-
-
+Please consult my [GitHub](https://pdsmart.github.io) website for more upto date information.
 
 ## Overview
 
