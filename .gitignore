@@ -7,3 +7,6 @@ jDPWR/target
 jDPWR/*.save
 jDPWR/*.working
 jDPWR/pomsav
+jDPWR/src/main/resources/webroot/sav*
+jDPWR/src/main/resources/webroot/xxx*
+
