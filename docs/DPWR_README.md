@@ -57,7 +57,7 @@ The section below assumes you are installing Debian or one of its derivatives, s
 2. Clone the repository into a local temporary directory, install into /usr/local and set the ownership.
 
     ```
-    cd /
+    cd ~
     git clone https://github.com/pdsmart/dPWR.git
     cd dPWR
     cp -r dPWR/* /usr/local/DPWR/
