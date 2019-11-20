@@ -12,7 +12,7 @@ To evaluate jDPWR, the easiest method is to create a docker image and run.
     cd ~
     mkdir temp
     git clone https://github.com/pdsmart/dPWR.git
-    cd DPWR
+    cd dPWR
     docker build -f Dockerfile.jdpwr -t jdpwr .
     ````
 
@@ -43,8 +43,8 @@ As the development is not yet complete, the assumption is it will be developed, 
     cd ~
     git clone https://github.com/pdsmart/dPWR.git
     cd DPWR
-    ln -s ~/DPWR/jDPWR /usr/local/jDPWR
-    chown -R www-data:www-data ~/DPWR/jDPWR
+    ln -s ~/dPWR/jDPWR /usr/local/jDPWR
+    chown -R www-data:www-data ~/dPWR/jDPWR
     ```
 
 3. Ensure all updates are applied:
@@ -63,7 +63,7 @@ As the development is not yet complete, the assumption is it will be developed, 
 5. Build the jar:
 
     ````bash
-    cd ~/DPWR/jDPWR
+    cd ~/dPWR/jDPWR
     mvn clean package
     ````
 6. Manually edit the JSON config file ~/DPWR/jDPWR/jDPWR.cfg

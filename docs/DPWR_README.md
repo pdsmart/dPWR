@@ -27,7 +27,7 @@ To evaluate dPWR, the easiest method is to create a docker image and run.
     cd ~
     mkdir temp
     git clone https://github.com/pdsmart/dPWR.git
-    cd DPWR
+    cd dPWR
     docker build -f Dockerfile.dpwr -t dpwr .
     ````
 
@@ -60,7 +60,7 @@ The section below assumes you are installing Debian or one of its derivatives, s
     ```
     cd /
     git clone https://github.com/pdsmart/dPWR.git
-    cd DPWR
+    cd dPWR
     cp -r dPWR/* /usr/local/DPWR/
     chown -R www-data:www-data /usr/local/DPWR
     ```
