@@ -2,21 +2,86 @@
 
 A follow up to the dPWR Perl based Power Controller, I started to convert it into a Java version using Jetty and Java Servlets, named it jDPWR, with the purpose to allow it's use on more platforms than the Perl based dPWR. During the conversion I got sidetracked with VHDL pushing this project out to a future date. I will eventually finish it off but it is a good starting place for anyone wanting to develop a java based controller.
 
+## Evaluate with Docker 
+
+To evaluate jDPWR, the easiest method is to create a docker image and run.
+
+1. Clone the repository and build the docker image.
+
+    ````bash
+    cd ~
+    mkdir temp
+    git clone https://github.com/pdsmart/dPWR.git
+    cd DPWR
+    docker build -f Dockerfile.jdpwr -t jdpwr .
+    ````
+
+2. Run the image mapping port 8080 to whichever port you want to use.
+
+    ````bash
+    docker run --rm -p 8100:8080 --name jdpwr jdpwr
+    ````
+3. Open a web browser and go to http://localhost:8100
+
+4. Stop the application
+
+    ````
+    docker stop jdpwr
+    ````
+
+
 ## jDPWR Installation
 
-Assuming a Unix based OS:
-1. Clone the repository.
-2. Install Maven.
-3. Build the jar:<br>
- &nbsp;&nbsp;&nbsp;&nbsp; cd \<project root directory>/jDPWR<br>
- &nbsp;&nbsp;&nbsp;&nbsp; mvn clean package<br>
-4. Manually edit the JSON config file \<project root directory>/jDPWR.cfg<br>
- &nbsp;&nbsp;&nbsp;&nbsp; Change http::serverHost to a valid IP for your machine.<br>
- &nbsp;&nbsp;&nbsp;&nbsp; Change http::serverPort to a value suitable for your machine, ie: 8080<br>
-5. Run the application<br>
- &nbsp;&nbsp;&nbsp;&nbsp; cd target<br>
- &nbsp;&nbsp;&nbsp;&nbsp; java -jar jDPWR-\<version>.jar<br>
-6. Open a web browser and enter http://\<your IP>:\<your Port>
+The section below assumes you are installing Debian or one of its derivatives, substitute relevant **yum** commands for Red Hat based linux versions.
+
+As the development is not yet complete, the assumption is it will be developed, compiled and run in-situ.
+
+1. Install Linux onto your development board Flash, SD or eMMC. 
+2. Clone the repository into a local temporary directory, install into /usr/local and set the ownership.
+
+    ```
+    cd ~
+    git clone https://github.com/pdsmart/dPWR.git
+    cd DPWR
+    ln -s ~/DPWR/jDPWR /usr/local/jDPWR
+    chown -R www-data:www-data ~/DPWR/jDPWR
+    ```
+
+3. Ensure all updates are applied:
+
+    ```
+    apt-get update
+    apt-get upgrade
+    ```
+
+4. Install neccessary packages:
+
+    ```
+    apt-get -yqq install procps socat default-jdk maven vim
+    ```
+
+5. Build the jar:
+
+    ````bash
+    cd ~/DPWR/jDPWR
+    mvn clean package
+    ````
+6. Manually edit the JSON config file ~/DPWR/jDPWR/jDPWR.cfg
+
+    ````bash
+    Change http::serverHost to a valid IP for your machine.
+    Change http::serverPort to a value suitable for your machine, ie: 8080
+    ````
+7. Run the application
+
+    ````bash
+    cd /usr/local/jDPWR/target
+    java -jar jDPWR-\<version>.jar
+    ````
+8. Open a web browser and enter http://\<your IP>:\<your Port>
+
+
+
 
 ## jDPWR Web Interface
 

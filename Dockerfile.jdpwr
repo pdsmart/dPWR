@@ -1,0 +1,26 @@
+# start from base
+FROM debian:latest
+
+LABEL maintainer="Philip Smart <philip.smart@net2net.org>"
+
+# Install dependencies
+RUN apt-get -yqq update
+RUN apt-get -yqq upgrade
+RUN apt-get -yqq install procps
+RUN apt-get -yqq install socat
+RUN apt-get -yqq install default-jre
+
+# In case of manual (via bash) changes.
+RUN apt-get -yqq install vim
+
+# Copy jDPWR
+ADD --chown=www-data:www-data jDPWR/target/jDPWR-9.3.9.v20160517.jar /usr/local/jDPWR/jar/
+COPY --chown=www-data:www-data jDPWR/jDPWR.cfg.docker /usr/local/jDPWR/jDPWR.cfg
+COPY --chown=www-data:www-data jDPWR/jDPWR.cfg.default /usr/local/jDPWR/
+WORKDIR /usr/local/jDPWR
+
+# Expose the web-server port from the container.
+EXPOSE 8080
+
+# Start dPWR
+CMD [ "java", "-jar", "jar/jDPWR-9.3.9.v20160517.jar" ]

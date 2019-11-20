@@ -1,15 +1,16 @@
 #!/bin/bash
 #########################################################################################################
 ##
-## Name:            startDPWR
-## Created:         September 2015
+## Name:            startDPWRinDocker
+## Created:         November 2019
 ## Author(s):       Philip Smart
-## Description:     A shell script to start the dPWR controller.
+## Description:     A modified shell script to start the dPWR controller within a docker container.
 ##
 ## Credits:         
 ## Copyright:       (c) 2015-2019 Philip Smart <philip.smart@net2net.org>
 ##
 ## History:         September 2015   - Initial module written.
+##                  November 2019    - Adapted for docker.
 ##
 #########################################################################################################
 ## This source file is free software: you can redistribute it and#or modify
@@ -41,23 +42,20 @@ fi
 
 # Create virtual ports as dPWR ATMEGA expects to communicate with a serial port. If needed you can connect
 # to the serial port via the container port forwarding.
-#for i in {0..4}
-#do
-#    socat  pty,link=/dev/vcom${i},raw  tcp4-listen:1000${i} &
-#done
+for i in {0..4}
+do
+    socat  pty,link=/dev/vcom${i},raw  tcp4-listen:1000${i} &
+done
 
-#-----------------------------------------------------------
-# Call the killDPWR script to terminate running process.
-#
+# Ok, launch the program without spawning, exit means exit container so the original script 
+# could not be used in the container.
 cd $ETCDIR
-echo "Killing dpwr"
-$ETCDIR/killDPWR
 sleep 3
-#
-#-----------------------------------------------------------
 
+#-----------------------------------------------------------
 COMMAND="${BINDIR}/dpwr $@"
 
 echo "Starting $COMMAND $*"
-${BASEDIR}/etc/forever $COMMAND $* &
+${BASEDIR}/etc/forever $COMMAND $*
+#-----------------------------------------------------------
 echo "Done."

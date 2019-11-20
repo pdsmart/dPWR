@@ -1,0 +1,33 @@
+# start from base
+FROM debian:latest
+
+LABEL maintainer="Philip Smart <philip.smart@net2net.org>"
+
+# Install dependencies
+RUN apt-get -yqq update
+RUN apt-get -yqq upgrade
+RUN apt-get -yqq install procps build-essential perl
+RUN apt-get -yqq install socat
+RUN apt-get -yqq install cpanminus
+
+# Bring in all perl packages.
+RUN cpan App::cpanminus
+RUN cpanm forks
+RUN cpanm Switch
+RUN cpanm CGI
+RUN cpanm CGI::Session
+RUN cpanm Device::SerialPort
+
+# In case of manual (via bash) changes.
+RUN apt-get -yqq install vim
+
+# Copy dPWR
+ADD --chown=www-data:www-data dPWR/. /usr/local/DPWR/
+COPY --chown=www-data:www-data dPWR/etc/DPWR.cfg.docker /usr/local/DPWR/etc/DPWR.cfg
+WORKDIR /usr/local/DPWR
+
+# Expose the web-server port from the container.
+EXPOSE 8080
+
+# Start dPWR
+CMD [ "bash", "etc/startDPWRinDocker" ]

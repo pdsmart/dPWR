@@ -325,7 +325,7 @@ sub htContent_AddBuf
 sub htContent_ExpandMacro
 {
     my ($http, $str, $includeFile, $activeMenu, $activeSubMenu) = @_;
-    my ($allPorts, $boardPage, $dynstr, $level, @macro, $returnHTML) = (0, "", "", 0, (), "");
+    my ($allPorts, $boardPage, $dynstr, $level, $returnHTML, @macro) = (0, "", "", 0, "", ());
 
     # Split macro up into it's components.
     #
@@ -338,7 +338,7 @@ sub htContent_ExpandMacro
                 or die "Cannot open HTML Include File:$http->{PARAMS}->{'HTTP_DOC_PATH'}/inc/$includeFile";
             while(my $incLine=<HTML_HDL>)
             {
-               $returnHTML = $returnHTML . $incLine;
+               $returnHTML = ($returnHTML eq "" ? $incLine : $returnHTML . $incLine);
             }
             close(HTML_HDL);
         }

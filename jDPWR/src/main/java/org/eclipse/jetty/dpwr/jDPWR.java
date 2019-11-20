@@ -86,8 +86,8 @@ public class jDPWR
     //
     // Constants.
     // 
-    private static final String             CONFIG_FILE            = "../jDPWR.cfg";
-    private static final String             DEFAULT_CONFIG_FILE    = "../jDPWR.cfg.default";
+    private static final String             CONFIG_FILE            = "jDPWR.cfg";
+    private static final String             DEFAULT_CONFIG_FILE    = "jDPWR.cfg.default";
 
     // Maxims.
     //
@@ -110,7 +110,12 @@ public class jDPWR
         ObjectMapper mapper = new ObjectMapper();
         Boolean readDefault = false;
         try {
-            dpwr = mapper.readValue(new File(CONFIG_FILE), DPWRServlet.class);
+            try {
+                dpwr = mapper.readValue(new File(CONFIG_FILE), DPWRServlet.class);
+            }
+            catch (IOException e) {
+                dpwr = mapper.readValue(new File("../" + CONFIG_FILE), DPWRServlet.class);
+            }
             LOG.info("Loaded configuration: " + CONFIG_FILE);
         }
         catch (JsonGenerationException e) {
@@ -135,7 +140,12 @@ public class jDPWR
         {
             System.out.println("Reading default configuration: "  + DEFAULT_CONFIG_FILE);
             try {
-                dpwr = mapper.readValue(new File(DEFAULT_CONFIG_FILE), DPWRServlet.class);
+                try {
+                    dpwr = mapper.readValue(new File(DEFAULT_CONFIG_FILE), DPWRServlet.class);
+                }
+                catch (IOException e) {
+                    dpwr = mapper.readValue(new File("../" + DEFAULT_CONFIG_FILE), DPWRServlet.class);
+                }
                 LOG.info("Loaded default configuration: " + DEFAULT_CONFIG_FILE);
             }
             catch (Exception e) {
