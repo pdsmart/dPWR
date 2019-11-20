@@ -10,7 +10,6 @@ To evaluate jDPWR, the easiest method is to create a docker image and run.
 
     ````bash
     cd ~
-    mkdir temp
     git clone https://github.com/pdsmart/dPWR.git
     cd dPWR
     docker build -f Dockerfile.jdpwr -t jdpwr .
