@@ -7,4 +7,5 @@
 *.js linguist-detectable=false
 *.html linguist-detectable=false
 *.htm linguist-detectable=false
+*.php linguist-detectable=false
 *.java linguist-detectable=true
